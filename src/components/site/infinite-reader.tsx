@@ -312,7 +312,9 @@ function ChapterBlock({
       <ChapterCharactersStrip characters={mentionedCharacters} />
       <div className="reader-prose" style={{ fontSize: fs.size, lineHeight: fs.line, fontFamily: ff }}>
         {paragraphs.map((p, i) => (
-          <ProcessedParagraph key={i} text={p} index={i} characters={characters} searchQuery={searchQuery} isFirst={i === 0} />
+          <div key={i} className="group relative">
+            <ProcessedParagraph text={p} index={i} chapterId={chapter.id} characters={characters} searchQuery={searchQuery} isFirst={i === 0} />
+          </div>
         ))}
       </div>
     </section>
