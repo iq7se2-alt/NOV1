@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, BookOpen, Home, Lock, X, Bell, Users, Trophy, MapPin, MessageSquare } from "lucide-react";
+import { Menu, BookOpen, Home, Lock, X, Bell, Users, Trophy, MapPin, MessageSquare, Bookmark, Search as SearchIcon } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import {
   Popover,
@@ -27,6 +27,8 @@ const NAV_LINKS = [
   { href: "/characters", label: "الشخصيات", labelEn: "Characters", icon: Users },
   { href: "/comments", label: "التعليقات", labelEn: "Comments", icon: MessageSquare },
   { href: "/worldmap", label: "الخريطة", labelEn: "World Map", icon: MapPin },
+  { href: "/bookmarks", label: "المفضلة", labelEn: "Bookmarks", icon: Bookmark },
+  { href: "/search", label: "بحث", labelEn: "Search", icon: SearchIcon },
 ];
 
 export function Navbar() {

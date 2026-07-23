@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useId } from "react";
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 
 type CharNode = {
@@ -91,6 +91,9 @@ function computePositions(
 }
 
 export function CharacterNetworkGraph({ characters, relations }: Props) {
+  const uid = useId();
+  const glowId = `glow-${uid}`;
+  const centerGlowId = `centerGlow-${uid}`;
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [hoveredRel, setHoveredRel] = useState<number | null>(null);
   const [hoveredChar, setHoveredChar] = useState<number | null>(null);
@@ -233,16 +236,16 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
       <div className="relative z-10 overflow-hidden rounded-xl" style={{ transform: `scale(${zoom})`, transformOrigin: "center center", transition: "transform 0.3s ease" }}>
         <svg viewBox="0 0 100 100" className="aspect-[4/3] w-full" style={{ minHeight: "500px" }}>
           <defs>
-            <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+            <radialGradient id={centerGlowId} cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#d4a843" stopOpacity="0.08" />
               <stop offset="100%" stopColor="#d4a843" stopOpacity="0" />
             </radialGradient>
-            <filter id="glow">
+            <filter id={glowId}>
               <feGaussianBlur stdDeviation="0.5" result="blur" />
               <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           </defs>
-          <circle cx="50" cy="50" r="45" fill="url(#centerGlow)" />
+          <circle cx="50" cy="50" r="45" fill={`url(#${centerGlowId})`} />
 
           {/* RELATION LINES */}
           {relations.map((rel) => {
@@ -263,7 +266,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
                   strokeWidth={isHovered ? "0.7" : isActive ? "0.5" : "0.3"}
                   opacity={dimmed ? 0.06 : isHovered ? 1 : isActive ? 0.8 : 0.35}
                   strokeDasharray={style.color === "#ef4444" ? "1.2,0.6" : "none"}
-                  filter={isHovered || isActive ? "url(#glow)" : undefined}
+                  filter={isHovered || isActive ? `url(#${glowId})` : undefined}
                   style={{ transition: "all 0.3s ease" }} />
                 {(isHovered || (isActive && hasFilter)) && (
                   <>
@@ -317,7 +320,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
                   stroke={isSelected ? "#ffd700" : ch.isMain ? "#d4a843" : "rgba(212,168,67,0.35)"}
                   strokeWidth={isSelected ? "0.4" : ch.isMain ? "0.3" : "0.15"}
                   opacity={dimmed ? 0.15 : 1}
-                  filter={isSelected ? "url(#glow)" : undefined}
+                  filter={isSelected ? `url(#${glowId})` : undefined}
                   style={{ transition: "all 0.3s" }} />
 
                 {/* Letter */}

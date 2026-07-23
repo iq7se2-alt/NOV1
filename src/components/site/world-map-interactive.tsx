@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { MapPin, ZoomIn, ZoomOut, Maximize2, Compass } from "lucide-react";
+import { MapPin, ZoomIn, ZoomOut, Maximize2, Compass, ExternalLink } from "lucide-react";
+import { toArabicDigits } from "@/lib/format";
 
 type Location = {
   id: number;
@@ -20,6 +22,7 @@ type Props = {
 };
 
 export function WorldMapInteractive({ locations }: Props) {
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<{
@@ -105,14 +108,28 @@ export function WorldMapInteractive({ locations }: Props) {
       </div>
 
       {/* ═══ RESET ═══ */}
-      {selectedId && (
-        <button
-          onClick={resetFilter}
-          className="absolute left-3 bottom-3 z-20 rounded-md border border-gold/30 bg-black/70 px-3 py-1.5 text-xs text-gold backdrop-blur-sm transition-colors hover:bg-gold/20"
-        >
-          إلغاء التحديد ✕
-        </button>
-      )}
+      {selectedId && (() => {
+        const selectedLoc = locations.find(l => l.id === selectedId);
+        return (
+        <div className="absolute left-3 bottom-3 z-20 flex items-center gap-2">
+          <button
+            onClick={resetFilter}
+            className="rounded-md border border-gold/30 bg-black/70 px-3 py-1.5 text-xs text-gold backdrop-blur-sm transition-colors hover:bg-gold/20"
+          >
+            إلغاء التحديد ✕
+          </button>
+          {selectedLoc && (
+            <button
+              onClick={() => router.push(`/chapters/${selectedLoc.startChapter}`)}
+              className="flex items-center gap-1.5 rounded-md border border-gold/50 bg-gold/20 px-3 py-1.5 text-xs text-gold backdrop-blur-sm transition-colors hover:bg-gold/40"
+            >
+              <ExternalLink className="h-3 w-3" />
+              الفصل {selectedLoc.startChapter}
+            </button>
+          )}
+        </div>
+        );
+      })()}
 
       {/* ═══ LOCATION COUNT ═══ */}
       <div className="absolute bottom-3 right-3 z-20 flex flex-col gap-1">
@@ -252,9 +269,14 @@ export function WorldMapInteractive({ locations }: Props) {
               <g
                 key={loc.id}
                 style={{ cursor: "pointer" }}
-                onClick={() =>
-                  setSelectedId(isSelected ? null : loc.id)
-                }
+                onClick={() => {
+                  if (isSelected) {
+                    // Second click = navigate to chapter
+                    router.push(`/chapters/${loc.startChapter}`);
+                  } else {
+                    setSelectedId(loc.id);
+                  }
+                }}
                 onMouseEnter={(e) => {
                   setHoveredId(loc.id);
                   setTooltip({ x: e.clientX, y: e.clientY, loc });
@@ -481,7 +503,7 @@ export function WorldMapInteractive({ locations }: Props) {
             </p>
           )}
           <p className="mt-1.5 text-[9px] text-gold/40">
-            اضغط للانتقال للفصل
+            اضغط مرة أخرى للانتقال للفصل
           </p>
         </div>
       )}

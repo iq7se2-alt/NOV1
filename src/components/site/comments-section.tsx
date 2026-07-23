@@ -17,6 +17,10 @@ type Comment = {
   content: string;
   wordAnchor: string | null;
   createdAt: string;
+  wpDate?: string | null;
+  avatarUrl?: string | null;
+  isReply?: boolean;
+  replies?: Comment[];
 };
 
 /** Render comment text with **bold**, *italic*, and ||spoiler|| formatting */
@@ -361,14 +365,21 @@ export function CommentsSection({ chapterNumber, limit }: { chapterNumber: numbe
         <ul className="space-y-3">
           {comments.slice(0, limit).map((c) => (
             <li key={c.id} className="gold-card rounded-lg p-4 sm:p-5">
-              {/* Header row */}
+              {/* Header row with avatar */}
               <div className="flex items-start justify-between gap-3 border-b border-gold/15 pb-2">
-                <div className="min-w-0">
-                  <div className="truncate font-naskh text-sm font-bold text-gold">
-                    {c.author}
-                  </div>
-                  <div className="mt-0.5 text-[10px] text-muted-foreground">
-                    <span title={formatArabicDate(c.createdAt)}>{formatTimeAgo(c.createdAt)}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  {c.avatarUrl ? (
+                    <img src={c.avatarUrl} alt="" className="h-7 w-7 rounded-full border border-gold/30 shrink-0" loading="lazy" />
+                  ) : (
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gold/20 bg-muted">
+                      <span className="text-[10px] font-bold text-gold/60">{c.author.charAt(0)}</span>
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="truncate font-naskh text-sm font-bold text-gold">{c.author}</div>
+                    <div className="mt-0.5 text-[10px] text-muted-foreground">
+                      <span title={formatArabicDate(c.wpDate || c.createdAt)}>{formatTimeAgo(c.wpDate || c.createdAt)}</span>
+                    </div>
                   </div>
                 </div>
                 <button
@@ -392,7 +403,7 @@ export function CommentsSection({ chapterNumber, limit }: { chapterNumber: numbe
                 {renderFormattedText(c.content)}
               </p>
 
-              {/* Word anchor badge — clickable */}
+              {/* Word anchor badge */}
               {c.wordAnchor && (
                 <button
                   type="button"
@@ -404,6 +415,30 @@ export function CommentsSection({ chapterNumber, limit }: { chapterNumber: numbe
                   مرتبط بـ: «{c.wordAnchor.substring(0, 40)}
                   {c.wordAnchor.length > 40 ? "…" : ""}»
                 </button>
+              )}
+
+              {/* Replies (threaded) */}
+              {c.replies && c.replies.length > 0 && (
+                <div className="mt-3 space-y-2 border-r-2 border-gold/15 pr-3 mr-2">
+                  {c.replies.map((reply) => (
+                    <div key={reply.id} className="rounded-lg border border-gold/10 bg-muted/20 p-2.5">
+                      <div className="flex items-center gap-1.5">
+                        {reply.avatarUrl ? (
+                          <img src={reply.avatarUrl} alt="" className="h-5 w-5 rounded-full border border-gold/20 shrink-0" loading="lazy" />
+                        ) : (
+                          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-gold/15 bg-muted">
+                            <span className="text-[8px] font-bold text-gold/50">{reply.author.charAt(0)}</span>
+                          </div>
+                        )}
+                        <span className="text-[11px] font-bold text-gold">{reply.author}</span>
+                        <span className="text-[9px] text-muted-foreground">{formatTimeAgo(reply.wpDate || reply.createdAt)}</span>
+                      </div>
+                      <div className="mt-1 text-[12px] leading-relaxed text-foreground/80 font-naskh">
+                        {renderFormattedText(reply.content)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </li>
           ))}

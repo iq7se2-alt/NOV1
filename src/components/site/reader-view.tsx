@@ -25,6 +25,7 @@ import { highlightSearchTerm, findSearchPositions } from "@/lib/search-utils";
 import { CommentsSection } from "@/components/site/comments-section";
 import { ChapterCharactersStrip } from "@/components/site/chapter-characters-strip";
 import { markChapterRead, addReadingTime } from "@/components/site/reading-stats";
+import { ParagraphComments } from "@/components/site/paragraph-comments";
 import { useTypingEffect, TypingText } from "@/components/site/typing-effect";
 import { saveScrollPosition, getScrollPosition } from "@/components/site/scroll-memory";
 
@@ -434,7 +435,9 @@ export function ReaderView({
             <CinematicContent paragraphs={paragraphs} visibleWords={contentVisibleWords} />
           ) : (
               paragraphs.map((p, i) => (
-                <ProcessedParagraph key={i} text={p} index={i} characters={characters} searchQuery={searchQuery} isFirst={i === 0} />
+                <div key={i} className="group relative">
+                  <ProcessedParagraph text={p} index={i} chapterId={chapter.id} characters={characters} searchQuery={searchQuery} isFirst={i === 0} />
+                </div>
               ))
           )}
         </div>
@@ -488,15 +491,15 @@ function ProgressTracker({ chapterNumber }: { chapterNumber: number }) {
 // ═══════════════════════════════════════════════════════════
 
 export function ProcessedParagraph({
-  text, index, characters, searchQuery, isFirst = false,
+  text, index, chapterId, characters, searchQuery, isFirst = false,
 }: {
-  text: string; index: number; characters: Character[]; searchQuery: string; isFirst?: boolean;
+  text: string; index: number; chapterId: number; characters: Character[]; searchQuery: string; isFirst?: boolean;
 }) {
   const segments = useMemo(() => processContentWithCharacters(text, characters), [text, characters]);
   const dialogueColor = useMemo(() => detectDialogueColor(text, characters), [text, characters]);
 
   return (
-    <p id={`para-${index}`}>
+    <p id={`para-${index}`} className="group">
       {segments.map((seg, i) => {
         if (seg.type === "character") {
           const char = characters.find(c => c.name === seg.name);
@@ -506,6 +509,7 @@ export function ProcessedParagraph({
           <TextWithHighlights key={i} text={seg.value} dialogueColor={dialogueColor} searchQuery={searchQuery} isFirstWord={isFirst && i === 0} />
         );
       })}
+      <ParagraphComments chapterId={chapterId} paragraphIndex={index} paragraphText={text} />
     </p>
   );
 }
