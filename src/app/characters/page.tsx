@@ -1,8 +1,7 @@
 import { db } from "@/lib/db";
-import Link from "next/link";
-import { Users, Search } from "lucide-react";
+import { Users } from "lucide-react";
 import { toArabicDigits } from "@/lib/format";
-import { CharactersGrid } from "@/components/site/characters-grid";
+import { CharactersNetworkView } from "@/components/site/characters-network-view";
 
 export const dynamic = "force-dynamic";
 
@@ -103,7 +102,7 @@ export default async function CharactersPage() {
           </p>
         </div>
       ) : (
-        <CharactersGrid
+        <CharactersNetworkView
           characters={visibleCharacters.map((c) => ({
             ...c,
             appearanceCount: appearanceMap.get(c.id)?.count || 0,

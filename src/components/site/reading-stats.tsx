@@ -1,7 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { Bookmark, CheckCircle2, Clock, BookOpen, TrendingUp } from "lucide-react";
+import { useSyncExternalStore, useState } from "react";
+import { Bookmark, CheckCircle2, Clock, BookOpen, TrendingUp, Download, Upload } from "lucide-react";
 import { toArabicDigits } from "@/lib/format";
 
 // Types
@@ -112,6 +112,38 @@ export function ReadingStatsWidget({
   const totalMinutes = Math.round(stats.totalReadingTimeSec / 60);
   const lastChapter = stats.currentChapter;
 
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
+
+  function exportProgress() {
+    const data: Record<string, unknown> = {};
+    // Gather all localStorage progress keys
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith("reading-") || key.startsWith("lord-of-truth") || key.startsWith("lot-") || key === "reader-font-family" || key === "reader-font-size" || key === "reader-highlight-chars" || key === "lastSeenChapterNumber")) {
+        try { data[key] = JSON.parse(localStorage.getItem(key) || ""); } catch { data[key] = localStorage.getItem(key); }
+      }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `lot-progress-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click(); URL.revokeObjectURL(url);
+  }
+
+  function importProgress() {
+    try {
+      const data = JSON.parse(importText);
+      for (const [key, val] of Object.entries(data)) {
+        localStorage.setItem(key, typeof val === "string" ? val : JSON.stringify(val));
+      }
+      emitStatsChange();
+      setShowImport(false); setImportText("");
+      alert("تم استيراد التقدم بنجاح! سيتم تحديث الصفحة.");
+      window.location.reload();
+    } catch { alert("ملف غير صالح. تأكد من صحة الملف."); }
+  }
+
   return (
     <div className="gold-card rounded-lg p-6">
       <div className="mb-4 flex items-center gap-2">
@@ -165,6 +197,39 @@ export function ReadingStatsWidget({
           >
             متابعة ←
           </a>
+        </div>
+      )}
+
+      {/* Export / Import */}
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <button onClick={exportProgress}
+          className="inline-flex items-center gap-1 rounded border border-gold/20 px-2.5 py-1 text-[10px] text-gold/60 hover:border-gold/40 hover:text-gold transition-colors"
+          title="تصدير تقدمك لحفظه">
+          <Download className="h-3 w-3" /> تصدير
+        </button>
+        <button onClick={() => setShowImport(!showImport)}
+          className="inline-flex items-center gap-1 rounded border border-gold/20 px-2.5 py-1 text-[10px] text-gold/60 hover:border-gold/40 hover:text-gold transition-colors"
+          title="استيراد تقدمك من ملف">
+          <Upload className="h-3 w-3" /> استيراد
+        </button>
+      </div>
+
+      {showImport && (
+        <div className="mt-3 rounded-md border border-gold/25 bg-muted/50 p-3 space-y-2">
+          <p className="text-[10px] text-muted-foreground">الصق محتوى ملف التصدير هنا:</p>
+          <textarea value={importText} onChange={e => setImportText(e.target.value)}
+            className="w-full h-20 rounded border border-gold/20 bg-muted p-2 text-[11px] font-mono resize-y focus:border-gold/40 focus:outline-none"
+            placeholder='{ "reading-stats": {...}, ... }' />
+          <div className="flex gap-2">
+            <button onClick={importProgress} disabled={!importText.trim()}
+              className="flex-1 rounded bg-gold py-1.5 text-[11px] font-bold text-[#1a0a00] hover:bg-gold-soft transition-colors disabled:opacity-40">
+              استيراد
+            </button>
+            <button onClick={() => { setShowImport(false); setImportText(""); }}
+              className="rounded border border-gold/20 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-gold transition-colors">
+              إلغاء
+            </button>
+          </div>
         </div>
       )}
     </div>
