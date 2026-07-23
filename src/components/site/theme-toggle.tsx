@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
-import { Sun, Moon, Monitor, BookOpen, Film, BookMarked } from "lucide-react";
+import { Sun, Moon, Monitor, BookOpen, Film, BookMarked, Eclipse } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +37,7 @@ export function ThemeToggle() {
   }
 
   const isDark = theme === "dark";
+  const isDarkVoid = theme === "dark-void";
   const isSepia = theme === "sepia";
   const isCinematic = theme === "cinematic";
   const isBook = theme === "book";
@@ -54,6 +55,8 @@ export function ThemeToggle() {
             <Film className="h-4 w-4" />
           ) : isBook ? (
             <BookMarked className="h-4 w-4" />
+          ) : isDarkVoid ? (
+            <Eclipse className="h-4 w-4" />
           ) : isDark ? (
             <Moon className="h-4 w-4" />
           ) : isSepia ? (
@@ -80,6 +83,11 @@ export function ThemeToggle() {
           <Moon className="ml-2 h-4 w-4" />
           داكن
           {isDark && <span className="mr-auto text-gold">✓</span>}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("dark-void")}>
+          <Eclipse className="ml-2 h-4 w-4" />
+          ظلام دامس
+          {isDarkVoid && <span className="mr-auto text-gold">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("cinematic")}>
           <Film className="ml-2 h-4 w-4" />

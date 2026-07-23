@@ -61,3 +61,6 @@ _match_remaining.mjs
 _fetch_new_chapters.mjs
 _live_chapters*.json
 _discord-fetch.log
+.ai-context/discord-fetch-script.mjs
+db/*.backup*
+_gemini_keys.txt

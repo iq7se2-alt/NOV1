@@ -22,10 +22,31 @@ export async function GET(
     return Response.json({ error: "الفصل غير موجود" }, { status: 404 });
   }
 
-  const comments = await db.comment.findMany({
+  // Fetch parent comments with their replies
+  const allComments = await db.comment.findMany({
     where: { chapterId: chapter.id },
     orderBy: { createdAt: "asc" },
   });
+
+  // Organize into threaded structure
+  const parentComments = allComments.filter(c => !c.isReply);
+  const replyMap = new Map<number, typeof allComments>();
+  for (const c of allComments) {
+    if (c.isReply && c.parentId) {
+      const parentWpId = allComments.find(p => p.id === c.parentId)?.wpCommentId;
+      // Find parent by wpCommentId
+      const parent = allComments.find(p => p.wpCommentId !== null && p.wpCommentId === c.parentId);
+      if (!parent) continue;
+      const arr = replyMap.get(parent.id) || [];
+      arr.push(c);
+      replyMap.set(parent.id, arr);
+    }
+  }
+
+  const comments = parentComments.map(c => ({
+    ...c,
+    replies: replyMap.get(c.id) || [],
+  }));
 
   return Response.json({ comments });
 }
