@@ -64,6 +64,16 @@ export function InfiniteReader({
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
 
+  // ═══ CLEANUP: keep only ±2 chapters from active ═══
+  function cleanupFarChapters(activeNum: number) {
+    setNextChapters(prev => prev.filter(c => c.number <= activeNum + 2));
+    setPrevChapters(prev => prev.filter(c => c.number >= activeNum - 2));
+    // Clean refs
+    sectionRefs.current.forEach((_, num) => {
+      if (Math.abs(num - activeNum) > 3) sectionRefs.current.delete(num);
+    });
+  }
+
   // ═══ FETCH NEXT ═══
   const loadNext = useCallback(async () => {
     if (isLoadingNextRef.current) return;
@@ -139,16 +149,6 @@ export function InfiniteReader({
     } catch { /* ignore */ }
     finally { isLoadingPrevRef.current = false; }
   }, [initialChapter.number, prevChapters]);
-
-  // ═══ CLEANUP: keep only ±2 chapters from active ═══
-  function cleanupFarChapters(activeNum: number) {
-    setNextChapters(prev => prev.filter(c => c.number <= activeNum + 2));
-    setPrevChapters(prev => prev.filter(c => c.number >= activeNum - 2));
-    // Clean refs
-    sectionRefs.current.forEach((_, num) => {
-      if (Math.abs(num - activeNum) > 3) sectionRefs.current.delete(num);
-    });
-  }
 
   // ═══ FETCH PREV LINK ON MOUNT ═══
   useEffect(() => {

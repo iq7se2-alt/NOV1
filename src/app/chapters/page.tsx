@@ -61,7 +61,7 @@ export default async function ChaptersPage() {
       </div>
 
       {/* Client-side search filter (no re-fetching) */}
-      <ChaptersListClient chapters={chapters} />
+      <ChaptersListClient chapters={chapters.map(c => ({ ...c, createdAt: c.createdAt.toISOString() }))} />
 
       {/* Footer note */}
       <div className="mt-12 text-center text-xs text-muted-foreground">

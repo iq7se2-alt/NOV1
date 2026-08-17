@@ -17,6 +17,7 @@ type Character = {
   isMain: boolean;
   appearanceCount: number;
   chapters: number[];
+  chapterParas?: Record<number, number>;
 };
 
 type Relation = {
@@ -301,18 +302,24 @@ export function CharactersGrid({
                     {selected.chapters
                       .sort((a, b) => a - b)
                       .slice(0, 100)
-                      .map((chNum) => (
-                        <Link
-                          key={chNum}
-                          href={`/chapters/${chNum}?char=${selected.id}#char-flash`}
-                          className="group inline-flex items-center gap-1 rounded-md border border-gold/20 bg-gold/5 px-2 py-1 text-[11px] text-gold/80 transition-all hover:border-gold/50 hover:bg-gold/15 hover:text-gold"
-                          title={`الفصل ${chNum} — اضغط للذهاب للفصل وتظليل اسم الشخصية`}
-                        >
-                          <span className="font-bold">
-                            {toArabicDigits(chNum)}
-                          </span>
-                        </Link>
-                      ))}
+                      .map((chNum) => {
+                        const para = selected.chapterParas?.[chNum];
+                        return (
+                          <Link
+                            key={chNum}
+                            href={`/chapters/${chNum}?char=${selected.id}#para-${para ?? 0}`}
+                            className="group flex flex-col items-center justify-center rounded-md border border-gold/20 bg-gold/5 px-2 py-1 text-[11px] text-gold/80 transition-all hover:border-gold/50 hover:bg-gold/15 hover:text-gold"
+                            title={`الفصل ${chNum} — اضغط للذهاب إلى أول ظهور (فقرة ${toArabicDigits((para ?? 0) + 1)}) وتظليل اسم الشخصية`}
+                          >
+                            <span className="font-bold leading-tight">
+                              {toArabicDigits(chNum)}
+                            </span>
+                            <span className="text-[8px] leading-tight text-gold/50 group-hover:text-gold/80">
+                              {toArabicDigits((para ?? 0) + 1)} فقرة
+                            </span>
+                          </Link>
+                        );
+                      })}
                     {selected.chapters.length > 100 && (
                       <span className="text-[10px] text-muted-foreground p-1">
                         +{toArabicDigits(selected.chapters.length - 100)} أخرى
@@ -320,7 +327,7 @@ export function CharactersGrid({
                     )}
                   </div>
                   <p className="mt-1 text-[10px] text-muted-foreground/60">
-                    اضغط رقم الفصل للذهاب إليه وتظليل اسم الشخصية ٣ ثواني
+                    اضغط رقم الفصل للذهاب إلى أول ظهور للاسم وتظليله ٣ ثواني
                   </p>
                 </div>
               )}

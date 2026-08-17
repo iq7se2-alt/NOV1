@@ -516,15 +516,13 @@ export function ProcessedParagraph({
 
 function TextWithHighlights({ text, dialogueColor, searchQuery, isFirstWord = false }: { text: string; dialogueColor: string | null; searchQuery: string; isFirstWord?: boolean }) {
   const formatted = parseFormatMarkers(text);
-  const firstWordDone = useRef(false);
-  if (isFirstWord) firstWordDone.current = false;
 
   return (
     <>
       {formatted.map((seg, i) => {
         if (seg.type === "char-link") {
           return (
-            <span key={i} className="font-semibold text-gold underline decoration-gold/30 decoration-dotted underline-offset-4" title={`شخصية: ${seg.charName}`}>
+            <span key={i} className="font-semibold text-gold" title={`شخصية: ${seg.charName}`}>
               {renderWithSearch(seg.text, searchQuery)}
             </span>
           );
@@ -535,13 +533,16 @@ function TextWithHighlights({ text, dialogueColor, searchQuery, isFirstWord = fa
         if (seg.type === "bold") return <strong key={i}>{renderWithSearch(seg.text, searchQuery)}</strong>;
         if (seg.type === "italic") return <em key={i}>{renderWithSearch(seg.text, searchQuery)}</em>;
         const parts = splitByDialogue(seg.text);
+        // First part that reaches the first-word branch (non-dialogue-colored, has a word)
+        const firstStyledPart = isFirstWord
+          ? parts.findIndex(part => part.text.trim() !== "" && !(part.isDialogue && dialogueColor))
+          : -1;
         return (
           <span key={i}>
             {parts.map((part, j) => {
               const rendered = renderWithSearch(part.text, searchQuery);
               if (part.isDialogue && dialogueColor) return <span key={j} style={{ color: dialogueColor }}>{rendered}</span>;
-              if (isFirstWord && !firstWordDone.current) {
-                firstWordDone.current = true;
+              if (j === firstStyledPart) {
                 const words = part.text.split(/(\s+)/);
                 return (
                   <span key={j}>
@@ -613,7 +614,7 @@ function CharacterMention({ character, name }: { character: Character | undefine
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="inline-flex cursor-pointer font-semibold text-gold underline decoration-gold/30 decoration-dotted underline-offset-4 transition-colors hover:decoration-gold">
+        <button className="inline-flex cursor-pointer font-semibold text-gold transition-colors hover:text-purple">
           {name}
         </button>
       </PopoverTrigger>
@@ -645,20 +646,26 @@ function CharacterMention({ character, name }: { character: Character | undefine
 // ═══════════════════════════════════════════════════════════
 
 function CinematicContent({ paragraphs, visibleWords }: { paragraphs: string[]; visibleWords: number }) {
-  let budget = visibleWords;
+  // Precompute each paragraph's starting word offset so rendering stays pure
+  const wordCounts = paragraphs.map(p => p.split(/\s+/).filter(Boolean).length);
+  const offsets: number[] = [];
+  let acc = 0;
+  for (const wc of wordCounts) {
+    offsets.push(acc);
+    acc += wc;
+  }
   return (
     <>
       {paragraphs.map((p, paraIdx) => {
-        if (budget <= 0) return <p key={paraIdx} style={{ opacity: 0 }}>{p}</p>;
-        const words = p.split(/(\s+)/);
+        const start = offsets[paraIdx] ?? 0;
+        if (start >= visibleWords) return <p key={paraIdx} style={{ opacity: 0 }}>{p}</p>;
         let count = 0;
-        const parts = words.map((word, i) => {
+        const parts = p.split(/(\s+)/).map((word, i) => {
           if (/^\s+$/.test(word) || word === "") return <span key={i}>{word}</span>;
-          const visible = count < budget;
+          const visible = start + count < visibleWords;
           count++;
           return <span key={i} style={{ opacity: visible ? 1 : 0, transition: "opacity 0.15s ease" }}>{word}</span>;
         });
-        budget -= count;
         return <p key={paraIdx}>{parts}</p>;
       })}
     </>

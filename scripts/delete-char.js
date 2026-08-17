@@ -7,7 +7,7 @@ async function main() {
     where: { name: { in: ['أن', 'آن', 'ان', 'ان'] } },
   });
   console.log('Found:', chars.map(c => c.name));
-  
+
   for (const c of chars) {
     const del = await p.character.delete({ where: { id: c.id } });
     console.log('Deleted:', del.name, '(id:', del.id, ')');

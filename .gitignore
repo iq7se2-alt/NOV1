@@ -63,3 +63,6 @@ _live_chapters*.json
 _discord-fetch.log
 .ai-context/discord-fetch-script.mjs
 db/*.backup*
+_sweep_report.json
+_audit_db.mjs
+_sweep_all_chapters.mjs

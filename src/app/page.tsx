@@ -38,6 +38,8 @@ async function getHomeData() {
   const allNums = await db.chapter.findMany({ select: { number: true }, orderBy: { number: "asc" } });
   const fillers = allNums.filter((c) => c.number !== Math.floor(c.number)).length;
   const regular = chapterCount - fillers;
+  // Actual first chapter (smallest number in the novel)
+  const firstChapter = allNums.length > 0 ? allNums[0].number : 1;
 
   return {
     settings,
@@ -46,11 +48,12 @@ async function getHomeData() {
     fillerCount: fillers,
     totalWords: wordsAgg._sum.wordCount ?? 0,
     latest,
+    firstChapter,
   };
 }
 
 export default async function HomePage() {
-  const { settings, chapterCount, regularCount, fillerCount, totalWords, latest } = await getHomeData();
+  const { settings, chapterCount, regularCount, fillerCount, totalWords, latest, firstChapter } = await getHomeData();
 
   const coverUrl = settings?.coverImageUrl || "/cover.jpg";
   const titleAr = settings?.novelTitle || "سيد الحقيقة";
@@ -59,7 +62,7 @@ export default async function HomePage() {
     settings?.novelDescription ||
     "روبين بورتون، شاب وُلد فوجد نفسه لديه الموهبة والعائلة القوية والذكاء — ما عدا شيء واحد.. الرغبة في استعمال كل هذا!";
 
-  const firstChapterNumber = latest.length > 0 ? latest[latest.length - 1].number : 1;
+  const firstChapterNumber = firstChapter;
 
   return (
     <div className="flex flex-col">

@@ -36,28 +36,38 @@ export default async function CharactersPage() {
         to: { select: { name: true } },
       },
     }),
-    // Get appearance data: characterId → list of chapter numbers
+    // Get appearance data: characterId → chapter numbers + first-mention paragraph
     db.chapterCharacter.findMany({
       select: {
         characterId: true,
+        paragraphIndex: true,
         chapter: { select: { number: true } },
       },
     }),
   ]);
 
-  // Build appearance map: characterId → { count, chapters: number[] }
-  const appearanceMap = new Map<number, { count: number; chapters: number[] }>();
+  // Build appearance map: characterId → { count, chapters: number[], paras: { chapterNumber → paragraph } }
+  const appearanceMap = new Map<
+    number,
+    { count: number; chapters: number[]; paras: Record<number, number> }
+  >();
   for (const app of appearanceData) {
     const existing = appearanceMap.get(app.characterId);
     if (existing) {
-      if (!existing.chapters.includes(app.chapter.number)) {
+      const prev = existing.paras[app.chapter.number];
+      if (prev === undefined) {
+        existing.paras[app.chapter.number] = app.paragraphIndex;
         existing.chapters.push(app.chapter.number);
         existing.count++;
+      } else {
+        // keep the FIRST (smallest) paragraph = the first word of the character
+        existing.paras[app.chapter.number] = Math.min(prev, app.paragraphIndex);
       }
     } else {
       appearanceMap.set(app.characterId, {
         count: 1,
         chapters: [app.chapter.number],
+        paras: { [app.chapter.number]: app.paragraphIndex },
       });
     }
   }
@@ -107,6 +117,7 @@ export default async function CharactersPage() {
             ...c,
             appearanceCount: appearanceMap.get(c.id)?.count || 0,
             chapters: appearanceMap.get(c.id)?.chapters || [],
+            chapterParas: appearanceMap.get(c.id)?.paras || {},
           }))}
           relations={relations.map((r) => ({
             id: r.id,

@@ -104,6 +104,8 @@ export function ReadingStatsWidget({
   totalChapters: number;
 }) {
   const { stats } = useReadingStats();
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
 
   if (stats.readChapters.length === 0) return null;
 
@@ -111,9 +113,6 @@ export function ReadingStatsWidget({
   const progress = totalChapters > 0 ? Math.round((readCount / totalChapters) * 100) : 0;
   const totalMinutes = Math.round(stats.totalReadingTimeSec / 60);
   const lastChapter = stats.currentChapter;
-
-  const [showImport, setShowImport] = useState(false);
-  const [importText, setImportText] = useState("");
 
   function exportProgress() {
     const data: Record<string, unknown> = {};

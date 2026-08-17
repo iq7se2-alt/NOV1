@@ -16,6 +16,7 @@ type Character = {
   isMain: boolean;
   appearanceCount: number;
   chapters: number[];
+  chapterParas?: Record<number, number>;
 };
 
 type Relation = {
@@ -42,7 +43,7 @@ export function CharactersNetworkView({
   characters: Character[];
   relations: Relation[];
 }) {
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("network");
 
   return (
     <div>
@@ -85,8 +86,11 @@ export function CharactersNetworkView({
             id: c.id,
             name: c.name,
             imageUrl: c.imageUrl,
+            description: c.description,
             isMain: c.isMain,
             color: c.color,
+            appearanceCount: c.appearanceCount,
+            chapters: c.chapters,
           }))}
           relations={relations.map((r) => ({
             id: r.id,

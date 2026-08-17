@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -56,7 +56,10 @@ function CharacterMention({ character, name }: { character: Character | undefine
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="inline-flex cursor-pointer font-semibold text-gold underline decoration-gold/30 decoration-dotted underline-offset-4 transition-colors hover:decoration-gold">
+        <button
+          data-char-id={character.id}
+          className="inline-flex cursor-pointer font-semibold text-gold transition-colors hover:text-purple"
+        >
           {name}
         </button>
       </PopoverTrigger>
@@ -135,6 +138,55 @@ export function BookPageReader({
     .split(/\n\s*\n+/)
     .map((p) => p.trim())
     .filter(Boolean);
+
+  // ══ JUMP TO FIRST WORD + NAME FLASH (3s) ══
+  // Arriving via /chapters/<n>?char=<charId>#para-<p> from the character
+  // page: scroll to that paragraph and make the character's name glow.
+  useEffect(() => {
+    const hash = window.location.hash;
+    const charId = new URLSearchParams(window.location.search).get("char");
+    const paraMatch = hash.match(/^#para-(\d+)$/);
+    if (!charId && !paraMatch) return;
+
+    let attempts = 0;
+    const flash = () => {
+      attempts++;
+      const targetPara = paraMatch
+        ? document.getElementById(`para-${paraMatch[1]}`)
+        : document.querySelector(".reader-prose [id^='para-']");
+      if (!targetPara) {
+        if (attempts < 30) setTimeout(flash, 150);
+        return;
+      }
+      targetPara.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      if (charId) {
+        const button = Array.from(
+          targetPara.querySelectorAll("[data-char-id]")
+        ).find((b) => b.getAttribute("data-char-id") === charId);
+        if (button) {
+          button.classList.add("char-flash");
+          button.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => button.classList.remove("char-flash"), 3000);
+        } else if (paraMatch) {
+          targetPara.classList.add("ring-2", "ring-gold/50", "rounded");
+          setTimeout(
+            () =>
+              targetPara.classList.remove("ring-2", "ring-gold/50", "rounded"),
+            3000
+          );
+        }
+      } else if (paraMatch) {
+        targetPara.classList.add("ring-2", "ring-gold/50", "rounded");
+        setTimeout(
+          () =>
+            targetPara.classList.remove("ring-2", "ring-gold/50", "rounded"),
+          3000
+        );
+      }
+    };
+    setTimeout(flash, 120);
+  }, [chapter.number]);
 
   return (
     <article className="mx-auto max-w-3xl px-4 pt-14 pb-10 sm:px-6">

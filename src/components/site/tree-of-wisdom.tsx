@@ -33,7 +33,8 @@ function generateBranches(
   thickness: number,
   depth: number,
   maxDepth: number,
-  branches: Branch[]
+  branches: Branch[],
+  rand: () => number
 ) {
   if (depth > maxDepth || length < 0.15) return;
   const end = start.clone().add(direction.clone().multiplyScalar(length));
@@ -42,10 +43,10 @@ function generateBranches(
   if (depth === maxDepth) return;
 
   // Number of children increases with depth
-  const numChildren = depth < 2 ? 2 : Math.random() > 0.4 ? 2 : 3;
+  const numChildren = depth < 2 ? 2 : rand() > 0.4 ? 2 : 3;
   for (let i = 0; i < numChildren; i++) {
-    const angle = (Math.PI * 2 * i) / numChildren + Math.random() * 0.5;
-    const tilt = 0.4 + Math.random() * 0.4;
+    const angle = (Math.PI * 2 * i) / numChildren + rand() * 0.5;
+    const tilt = 0.4 + rand() * 0.4;
     const newDir = direction
       .clone()
       .applyAxisAngle(new THREE.Vector3(0, 1, 0), angle)
@@ -57,11 +58,12 @@ function generateBranches(
     generateBranches(
       end,
       newDir,
-      length * (0.65 + Math.random() * 0.15),
+      length * (0.65 + rand() * 0.15),
       thickness * 0.7,
       depth + 1,
       maxDepth,
-      branches
+      branches,
+      rand
     );
   }
 }
@@ -80,16 +82,14 @@ function TreeMesh({ readCount }: { readCount: number }) {
   }, [readCount]);
 
   // Generate branches (stable, only regenerates when stage changes meaningfully)
+  const seedBucket = Math.floor(readCount / 10); // regenerates every 10 chapters for visual variety
   const branches = useMemo(() => {
-    const seed = Math.floor(readCount / 10); // regenerates every 10 chapters for visual variety
     // Simple seeded random
-    let s = seed * 9301 + 49297;
+    let s = seedBucket * 9301 + 49297;
     const rand = () => {
       s = (s * 9301 + 49297) % 233280;
       return s / 233280;
     };
-    const originalRandom = Math.random;
-    Math.random = rand;
     const result: Branch[] = [];
     generateBranches(
       new THREE.Vector3(0, 0, 0),
@@ -98,11 +98,11 @@ function TreeMesh({ readCount }: { readCount: number }) {
       0.18,
       0,
       stage.maxDepth,
-      result
+      result,
+      rand
     );
-    Math.random = originalRandom;
     return result;
-  }, [stage.trunk, stage.maxDepth, Math.floor(readCount / 10)]);
+  }, [stage.trunk, stage.maxDepth, seedBucket]);
 
   // Leaves positions
   const leafPositions = useMemo(() => {

@@ -31,7 +31,7 @@ export default async function BookmarksPage() {
         </p>
       </div>
 
-      <BookmarksClient allChapters={allChapters} />
+      <BookmarksClient allChapters={allChapters.map(c => ({ ...c, createdAt: c.createdAt.toISOString() }))} />
     </div>
   );
 }

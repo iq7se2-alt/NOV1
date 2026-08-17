@@ -150,21 +150,21 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
         const hovered = dist < 60;
 
         // Burst animation
-        if (word.burst && word.burst > 0) {
-          word.burst -= 0.02;
-          if (word.burst < 0) word.burst = 0;
+        let burst = word.burst ?? 0;
+        if (burst > 0) {
+          burst = Math.max(0, burst - 0.02);
+          word.burst = burst;
         }
-        const bursting = word.burst && word.burst > 0;
 
-        const fontSize = word.size + (bursting ? word.burst * 20 : 0);
-        ctx.font = `${hovered || bursting ? "bold" : "normal"} ${fontSize}px var(--font-naskh), serif`;
+        const fontSize = word.size + (burst > 0 ? burst * 20 : 0);
+        ctx.font = `${hovered || burst > 0 ? "bold" : "normal"} ${fontSize}px var(--font-naskh), serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        if (bursting) {
+        if (burst > 0) {
           ctx.shadowColor = "#ffd700";
-          ctx.shadowBlur = 30 + word.burst * 20;
-          ctx.fillStyle = `rgba(255, 215, 0, ${word.burst})`;
+          ctx.shadowBlur = 30 + burst * 20;
+          ctx.fillStyle = `rgba(255, 215, 0, ${burst})`;
         } else if (hovered) {
           ctx.shadowColor = "#d4b05e";
           ctx.shadowBlur = 20;
