@@ -66,3 +66,4 @@ db/*.backup*
 _sweep_report.json
 _audit_db.mjs
 _sweep_all_chapters.mjs
+_quest/

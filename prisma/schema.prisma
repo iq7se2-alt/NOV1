@@ -36,6 +36,11 @@ model Character {
   imageUrl    String?
   color       String?
   isMain      Boolean  @default(false)
+  kind        String   @default("person") // person | group | faction | army | creature
+  mentionCount Int     @default(0) // total occurrences across all chapters
+  aliases     String?  // JSON array of alternate spellings
+  firstChapter Int?    // earliest chapter number where the character appears
+  chapterCount Int     @default(0) // number of distinct chapters with an appearance
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   relationsFrom CharacterRelation[] @relation("relationsFrom")
@@ -51,6 +56,7 @@ model ChapterCharacter {
   character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   paragraphIndex Int    // Which paragraph (0-based)
   wordIndex    Int      // Character index within the paragraph text
+  mentionCount Int      @default(1) // occurrences of the name within this paragraph
   createdAt    DateTime @default(now())
 
   @@unique([chapterId, characterId, paragraphIndex])
@@ -73,6 +79,9 @@ model Location {
   name        String   @unique
   description String?
   imageUrl    String?
+  kind        String   @default("place") // place | region | city | landmark | realm
+  mentionCount Int     @default(0)
+  aliases     String?  // JSON array of alternate spellings
   posX        Float    @default(50)  // 0-100 percentage on map
   posY        Float    @default(50)
   startChapter Int     @default(1)
