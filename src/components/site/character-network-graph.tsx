@@ -12,6 +12,7 @@ type CharNode = {
   isMain: boolean;
   color: string | null;
   appearanceCount: number;
+  mentionCount?: number;
   chapters: number[];
 };
 
@@ -415,7 +416,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
             <div className="min-w-0">
               <h3 className="truncate font-naskh text-sm font-bold text-gold">{selected.name}</h3>
               <p className="text-[10px] text-gold/60">
-                {toArabicDigits(selected.appearanceCount)} ظهور · {toArabicDigits(selectedRels.length)} علاقة
+                {toArabicDigits(selected.mentionCount || selected.appearanceCount)} ذكر · {toArabicDigits(selectedRels.length)} علاقة
               </p>
             </div>
           </div>

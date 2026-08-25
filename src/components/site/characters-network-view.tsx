@@ -14,6 +14,10 @@ type Character = {
   imageUrl: string | null;
   color: string | null;
   isMain: boolean;
+  kind?: string;
+  mentionCount?: number;
+  chapterCount?: number;
+  firstChapter?: number | null;
   appearanceCount: number;
   chapters: number[];
   chapterParas?: Record<number, number>;
@@ -90,6 +94,7 @@ export function CharactersNetworkView({
             isMain: c.isMain,
             color: c.color,
             appearanceCount: c.appearanceCount,
+            mentionCount: c.mentionCount || 0,
             chapters: c.chapters,
           }))}
           relations={relations.map((r) => ({

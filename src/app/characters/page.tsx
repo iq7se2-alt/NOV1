@@ -14,7 +14,7 @@ export default async function CharactersPage() {
   // Single efficient query — get characters with appearance info
   const [characters, relations, appearanceData] = await Promise.all([
     db.character.findMany({
-      orderBy: [{ isMain: "desc" }, { name: "asc" }],
+      orderBy: [{ mentionCount: "desc" }, { isMain: "desc" }, { name: "asc" }],
       select: {
         id: true,
         name: true,
@@ -23,6 +23,10 @@ export default async function CharactersPage() {
         imageUrl: true,
         color: true,
         isMain: true,
+        kind: true,
+        mentionCount: true,
+        chapterCount: true,
+        firstChapter: true,
       },
     }),
     db.characterRelation.findMany({
@@ -72,7 +76,7 @@ export default async function CharactersPage() {
     }
   }
 
-  // Show ALL characters (even without appearances) — they all have images from Discord
+  // Show ALL characters sorted by real mention count
   const visibleCharacters = characters;
 
   return (
@@ -92,11 +96,11 @@ export default async function CharactersPage() {
               <span className="font-bold text-gold">
                 {toArabicDigits(visibleCharacters.length)}
               </span>{" "}
-              شخصية ·{" "}
+              كيان ·{" "}
               <span className="font-bold text-gold">
                 {toArabicDigits(relations.length)}
               </span>{" "}
-              علاقة
+              علاقة · مرتّبة بعدد الذكر
             </>
           ) : (
             "لم تُضف شخصيات بعد"
@@ -115,7 +119,7 @@ export default async function CharactersPage() {
         <CharactersNetworkView
           characters={visibleCharacters.map((c) => ({
             ...c,
-            appearanceCount: appearanceMap.get(c.id)?.count || 0,
+            appearanceCount: appearanceMap.get(c.id)?.count || c.chapterCount || 0,
             chapters: appearanceMap.get(c.id)?.chapters || [],
             chapterParas: appearanceMap.get(c.id)?.paras || {},
           }))}

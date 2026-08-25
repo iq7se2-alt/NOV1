@@ -2,7 +2,20 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, Users, BookOpen, Star, X, Network } from "lucide-react";
+import {
+  Search,
+  Users,
+  BookOpen,
+  Star,
+  X,
+  Flame,
+  User,
+  Shield,
+  Swords,
+  Ghost,
+  Crown,
+  MapPin,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toArabicDigits } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -15,6 +28,10 @@ type Character = {
   imageUrl: string | null;
   color: string | null;
   isMain: boolean;
+  kind?: string;
+  mentionCount?: number;
+  chapterCount?: number;
+  firstChapter?: number | null;
   appearanceCount: number;
   chapters: number[];
   chapterParas?: Record<number, number>;
@@ -43,12 +60,31 @@ const REL_STYLES: Record<string, { color: string; label: string }> = {
   أخ: { color: "#06b6d4", label: "أخ" },
   ابن: { color: "#f59e0b", label: "ابن" },
   تابع: { color: "#8b5cf6", label: "تابع" },
-  سيده: { color: "#dc2626", label: "سيده" },
+  قائد: { color: "#f97316", label: "قائد" },
+  عضو: { color: "#14b8a6", label: "عضو" },
+};
+
+const KIND_META: Record<
+  string,
+  { label: string; icon: typeof User; hue: string }
+> = {
+  person: { label: "شخصية", icon: User, hue: "216 92% 60%" },
+  faction: { label: "طائفة/عائلة", icon: Shield, hue: "38 92% 50%" },
+  group: { label: "فرقة", icon: Users, hue: "160 84% 39%" },
+  army: { label: "جيش", icon: Swords, hue: "0 72% 51%" },
+  creature: { label: "مخلوق", icon: Ghost, hue: "280 65% 60%" },
+};
+
+const RANK_STYLES: Record<number, string> = {
+  1: "from-amber-200 via-yellow-400 to-amber-600 shadow-[0_0_18px_rgba(251,191,36,0.55)]",
+  2: "from-slate-100 via-slate-300 to-slate-500 shadow-[0_0_14px_rgba(203,213,225,0.45)]",
+  3: "from-orange-200 via-orange-400 to-orange-700 shadow-[0_0_14px_rgba(234,124,58,0.45)]",
 };
 
 /**
- * Characters grid — responsive, searchable, filterable.
- * Lightweight: no network graph (was heavy), clean modal with chapter links.
+ * Characters grid v2 — sorted by real mention count (عدد الذكر),
+ * kind filtering (شخص/فرقة/جيش/مخلوق), luxurious gold cards,
+ * deep links to first appearance with name flash.
  */
 export function CharactersGrid({
   characters,
@@ -58,7 +94,8 @@ export function CharactersGrid({
   relations: Relation[];
 }) {
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "main" | "withRelations">("all");
+  const [filter, setFilter] = useState<string>("all");
+  const [sort, setSort] = useState<"mentions" | "chapters" | "name">("mentions");
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const filtered = useMemo(() => {
@@ -72,16 +109,26 @@ export function CharactersGrid({
       );
     }
     if (filter === "main") result = result.filter((c) => c.isMain);
-    if (filter === "withRelations") {
+    else if (filter === "withRelations") {
       const charsWithRels = new Set<number>();
       relations.forEach((r) => {
         charsWithRels.add(r.fromId);
         charsWithRels.add(r.toId);
       });
       result = result.filter((c) => charsWithRels.has(c.id));
+    } else if (KIND_META[filter]) {
+      result = result.filter((c) => (c.kind || "person") === filter);
     }
-    return result;
-  }, [characters, q, filter, relations]);
+    const sorted = [...result];
+    if (sort === "mentions")
+      sorted.sort(
+        (a, b) => (b.mentionCount || 0) - (a.mentionCount || 0) || (b.appearanceCount - a.appearanceCount)
+      );
+    else if (sort === "chapters")
+      sorted.sort((a, b) => b.chapters.length - a.chapters.length);
+    else if (sort === "name") sorted.sort((a, b) => a.name.localeCompare(b.name, "ar"));
+    return sorted;
+  }, [characters, q, filter, sort, relations]);
 
   const selected = selectedId
     ? characters.find((c) => c.id === selectedId)
@@ -90,36 +137,68 @@ export function CharactersGrid({
     ? relations.filter((r) => r.fromId === selectedId || r.toId === selectedId)
     : [];
 
+  // global rank by mentions (position among ALL characters)
+  const rankOf = useMemo(() => {
+    const m = new Map<number, number>();
+    [...characters]
+      .sort((a, b) => (b.mentionCount || 0) - (a.mentionCount || 0))
+      .forEach((c, i) => m.set(c.id, i + 1));
+    return m;
+  }, [characters]);
+
+  const kindLabel = (k?: string) =>
+    KIND_META[k || "person"]?.label || "شخصية";
+  const KindIcon = (k?: string) => KIND_META[k || "person"]?.icon || User;
+
   return (
     <>
       {/* ═══ FILTER BAR ═══ */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gold/50" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="ابحث عن شخصية..."
-            className="border-gold/25 bg-muted pr-10 font-naskh"
-          />
-          {q && (
-            <button
-              onClick={() => setQ("")}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-gold"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
+      <div className="mb-6 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gold/50" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="ابحث عن شخصية أو فرقة أو جيش..."
+              className="border-gold/25 bg-muted pr-10 font-naskh"
+            />
+            {q && (
+              <button
+                onClick={() => setQ("")}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-gold"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as typeof sort)}
+            className="rounded-lg border border-gold/25 bg-muted px-3 py-2 text-xs text-gold outline-none"
+          >
+            <option value="mentions">الترتيب: عدد الذكر</option>
+            <option value="chapters">الترتيب: عدد الفصول</option>
+            <option value="name">الترتيب: الاسم</option>
+          </select>
+          <span className="text-xs text-muted-foreground">
+            {toArabicDigits(filtered.length)} كيان
+          </span>
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {[
             { id: "all", label: "الكل" },
-            { id: "main", label: "رئيسية" },
+            { id: "main", label: "★ رئيسية" },
+            { id: "person", label: "شخصيات" },
+            { id: "faction", label: "طوائف وعائلات" },
+            { id: "group", label: "فرق" },
+            { id: "army", label: "جيوش" },
+            { id: "creature", label: "مخلوقات" },
             { id: "withRelations", label: "بها علاقات" },
           ].map((f) => (
             <button
               key={f.id}
-              onClick={() => setFilter(f.id as typeof filter)}
+              onClick={() => setFilter(f.id)}
               className={cn(
                 "rounded-lg border px-3 py-1.5 text-xs transition-colors",
                 filter === f.id
@@ -131,9 +210,6 @@ export function CharactersGrid({
             </button>
           ))}
         </div>
-        <span className="text-xs text-muted-foreground">
-          {toArabicDigits(filtered.length)} شخصية
-        </span>
       </div>
 
       {/* ═══ GRID ═══ */}
@@ -142,24 +218,40 @@ export function CharactersGrid({
           const charRels = relations.filter(
             (r) => r.fromId === char.id || r.toId === char.id
           );
+          const rank = rankOf.get(char.id) ?? 999;
+          const rankStyle = RANK_STYLES[rank];
+          const KIcon = KindIcon(char.kind);
+          const kindHue = KIND_META[char.kind || "person"]?.hue || "216 92% 60%";
           return (
             <button
               key={char.id}
               onClick={() => setSelectedId(char.id)}
               className={cn(
-                "group relative flex flex-col items-center rounded-2xl border bg-muted/20 p-4 text-center transition-all hover:scale-[1.03] hover:border-gold/50 hover:shadow-xl hover:shadow-gold/10",
+                "group relative flex flex-col items-center overflow-visible rounded-2xl border bg-muted/20 p-4 pt-5 text-center transition-all hover:scale-[1.03] hover:border-gold/50 hover:shadow-xl hover:shadow-gold/10",
                 char.isMain
                   ? "border-gold/40 ring-1 ring-gold/20"
                   : "border-gold/15"
               )}
             >
-              {/* Circular avatar with gradient ring */}
+              {/* Rank medal — top 3 by mentions */}
+              {rank <= 3 && (
+                <span
+                  className={cn(
+                    "absolute -top-2 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-black text-[#1a0a00]",
+                    rankStyle || ""
+                  )}
+                >
+                  {toArabicDigits(rank)}
+                </span>
+              )}
+
+              {/* Circular avatar with gradient ring tinted by kind */}
               <div className="relative mb-3 h-28 w-28 sm:h-32 sm:w-32">
                 <div
-                  className={cn(
-                    "absolute inset-0 rounded-full bg-gradient-to-br from-gold/40 via-purple/30 to-gold/40 opacity-60 blur-sm transition-opacity group-hover:opacity-100",
-                    char.isMain && "opacity-80"
-                  )}
+                  className="absolute inset-0 rounded-full opacity-50 blur-sm transition-opacity group-hover:opacity-90"
+                  style={{
+                    background: `radial-gradient(circle at 30% 30%, hsl(${kindHue} / 0.55), rgba(212,176,94,0.35) 60%, transparent)`,
+                  }}
                 />
                 <div className="absolute inset-[3px] overflow-hidden rounded-full border-2 border-gold/30 bg-muted">
                   {char.imageUrl ? (
@@ -170,17 +262,29 @@ export function CharactersGrid({
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                    <div
+                      className="flex h-full w-full items-center justify-center"
+                      style={{
+                        background: `linear-gradient(135deg, hsl(${kindHue} / 0.12), rgba(0,0,0,0))`,
+                      }}
+                    >
                       <span className="font-naskh text-4xl font-bold text-gold/40">
                         {char.name.charAt(0)}
                       </span>
                     </div>
                   )}
                 </div>
+
+                {/* Mention badge — عدد الذكر */}
+                {(char.mentionCount || 0) > 0 && (
+                  <span className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-gold/40 bg-background/95 px-2 py-0.5 text-[10px] font-bold text-gold shadow-lg backdrop-blur-sm">
+                    <Flame className="h-3 w-3 fill-orange-500/70 text-orange-500" />
+                    {toArabicDigits(char.mentionCount || 0)} ذكر
+                  </span>
+                )}
                 {char.isMain && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-gold px-2 py-0.5 text-[8px] font-bold text-[#1a0a00] shadow-lg whitespace-nowrap">
-                    <Star className="h-2 w-2 fill-current" />
-                    رئيسي
+                  <span className="absolute -top-1 left-2 rounded-full bg-gold p-1 shadow-lg">
+                    <Crown className="h-3 w-3 fill-[#1a0a00] text-[#1a0a00]" />
                   </span>
                 )}
                 {char.color && (
@@ -191,7 +295,7 @@ export function CharactersGrid({
                 )}
               </div>
 
-              <h3 className="font-naskh text-sm font-bold text-foreground line-clamp-1 group-hover:text-gold transition-colors">
+              <h3 className="mt-1 font-naskh text-sm font-bold text-foreground line-clamp-1 group-hover:text-gold transition-colors">
                 {char.name}
               </h3>
               {char.nameEn && (
@@ -200,10 +304,22 @@ export function CharactersGrid({
                 </p>
               )}
 
-              <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+              {/* Kind chip */}
+              <span
+                className="mt-1.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px]"
+                style={{
+                  backgroundColor: `hsl(${kindHue} / 0.12)`,
+                  color: `hsl(${kindHue})`,
+                }}
+              >
+                <KIcon className="h-2.5 w-2.5" />
+                {kindLabel(char.kind)}
+              </span>
+
+              <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <BookOpen className="h-2.5 w-2.5" />
-                  {toArabicDigits(char.appearanceCount)}
+                  {toArabicDigits(char.chapters.length)}
                 </span>
                 {charRels.length > 0 && (
                   <span className="flex items-center gap-1 text-gold/60">
@@ -212,6 +328,19 @@ export function CharactersGrid({
                   </span>
                 )}
               </div>
+
+              {/* First appearance quick link */}
+              {char.firstChapter != null && (
+                <Link
+                  href={`/chapters/${char.firstChapter}?char=${char.id}#para-${char.chapterParas?.[char.firstChapter] ?? 0}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-2 inline-flex items-center gap-1 rounded-md border border-gold/20 bg-gold/5 px-2 py-0.5 text-[9px] text-gold/70 transition-all hover:border-gold/50 hover:bg-gold/15 hover:text-gold"
+                  title="اذهب إلى أول ظهور وسيُظلل الاسم"
+                >
+                  <MapPin className="h-2.5 w-2.5" />
+                  أول ظهور: الفصل {toArabicDigits(char.firstChapter)}
+                </Link>
+              )}
             </button>
           );
         })}
@@ -248,12 +377,18 @@ export function CharactersGrid({
               >
                 <X className="h-4 w-4" />
               </button>
+              {(selected.mentionCount || 0) > 0 && (
+                <span className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-gold/40 bg-background/90 px-3 py-1 text-xs font-bold text-gold shadow-lg">
+                  <Flame className="h-3.5 w-3.5 fill-orange-500/70 text-orange-500" />
+                  {toArabicDigits(selected.mentionCount || 0)} ذكر في الرواية
+                </span>
+              )}
             </div>
 
             {/* Body */}
             <div className="p-5">
               {/* Name + badges */}
-              <div className="mb-3 flex items-center gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
                 <h2 className="font-naskh text-2xl font-bold text-gold">
                   {selected.name}
                 </h2>
@@ -261,6 +396,20 @@ export function CharactersGrid({
                   <span className="flex items-center gap-1 rounded-full bg-gold/90 px-2 py-0.5 text-[10px] font-bold text-[#1a0a00]">
                     <Star className="h-2.5 w-2.5 fill-current" />
                     رئيسي
+                  </span>
+                )}
+                <span
+                  className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  style={{
+                    backgroundColor: `hsl(${kindHue(selected.kind)} / 0.12)`,
+                    color: `hsl(${kindHue(selected.kind)})`,
+                  }}
+                >
+                  {kindLabel(selected.kind)}
+                </span>
+                {rankOf.get(selected.id)! <= 3 && (
+                  <span className="rounded-full bg-gradient-to-br from-amber-300 to-amber-600 px-2 py-0.5 text-[10px] font-black text-[#1a0a00]">
+                    المرتبة {toArabicDigits(rankOf.get(selected.id)!)} بالذكر
                   </span>
                 )}
               </div>
@@ -276,20 +425,48 @@ export function CharactersGrid({
               )}
 
               {/* Stats */}
-              <div className="mb-4 flex gap-3">
-                <div className="flex-1 rounded-lg border border-gold/20 bg-muted/50 p-3 text-center">
+              <div className="mb-4 grid grid-cols-3 gap-3">
+                <div className="rounded-lg border border-gold/20 bg-muted/50 p-3 text-center">
                   <div className="font-bold text-gold">
-                    {toArabicDigits(selected.appearanceCount)}
+                    {toArabicDigits(selected.mentionCount || 0)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">ذكر</div>
+                </div>
+                <div className="rounded-lg border border-gold/20 bg-muted/50 p-3 text-center">
+                  <div className="font-bold text-gold">
+                    {toArabicDigits(selected.chapters.length)}
                   </div>
                   <div className="text-[10px] text-muted-foreground">فصل</div>
                 </div>
-                <div className="flex-1 rounded-lg border border-gold/20 bg-muted/50 p-3 text-center">
+                <div className="rounded-lg border border-gold/20 bg-muted/50 p-3 text-center">
                   <div className="font-bold text-gold">
                     {toArabicDigits(selectedRelations.length)}
                   </div>
                   <div className="text-[10px] text-muted-foreground">علاقة</div>
                 </div>
               </div>
+
+              {/* First appearance hero link */}
+              {selected.firstChapter != null && (
+                <Link
+                  href={`/chapters/${selected.firstChapter}?char=${selected.id}#para-${selected.chapterParas?.[selected.firstChapter] ?? 0}`}
+                  className="mb-4 flex items-center justify-between rounded-xl border border-gold/30 bg-gradient-to-l from-gold/15 via-gold/5 to-transparent p-3 transition-all hover:border-gold/60 hover:from-gold/25"
+                >
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-gold" />
+                    <div>
+                      <div className="text-sm font-bold text-gold">
+                        أول ظهور: الفصل{" "}
+                        {toArabicDigits(selected.firstChapter)}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        اضغط للانتقال إلى الفقرة وتظليل الاسم ٣ ثواني
+                      </div>
+                    </div>
+                  </div>
+                  <BookOpen className="h-4 w-4 text-gold/60" />
+                </Link>
+              )}
 
               {/* Chapter appearances — clickable, links to chapter with flash */}
               {selected.chapters.length > 0 && (
@@ -326,9 +503,6 @@ export function CharactersGrid({
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 text-[10px] text-muted-foreground/60">
-                    اضغط رقم الفصل للذهاب إلى أول ظهور للاسم وتظليله ٣ ثواني
-                  </p>
                 </div>
               )}
 
@@ -375,5 +549,17 @@ export function CharactersGrid({
         </div>
       )}
     </>
+  );
+}
+
+function kindHue(k?: string): string {
+  return (
+    {
+      person: "216 92% 60%",
+      faction: "38 92% 50%",
+      group: "160 84% 39%",
+      army: "0 72% 51%",
+      creature: "280 65% 60%",
+    }[k || "person"] || "216 92% 60%"
   );
 }
