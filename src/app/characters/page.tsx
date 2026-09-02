@@ -11,8 +11,9 @@ export const metadata = {
 };
 
 export default async function CharactersPage() {
-  // Single efficient query — get characters with appearance info
-  const [characters, relations, appearanceData] = await Promise.all([
+  // Light query: characters + relations only. Appearance chapters load
+  // on demand via /api/characters/[id]/appearances when a card opens.
+  const [characters, relations] = await Promise.all([
     db.character.findMany({
       orderBy: [{ mentionCount: "desc" }, { isMain: "desc" }, { name: "asc" }],
       select: {
@@ -40,41 +41,7 @@ export default async function CharactersPage() {
         to: { select: { name: true } },
       },
     }),
-    // Get appearance data: characterId → chapter numbers + first-mention paragraph
-    db.chapterCharacter.findMany({
-      select: {
-        characterId: true,
-        paragraphIndex: true,
-        chapter: { select: { number: true } },
-      },
-    }),
   ]);
-
-  // Build appearance map: characterId → { count, chapters: number[], paras: { chapterNumber → paragraph } }
-  const appearanceMap = new Map<
-    number,
-    { count: number; chapters: number[]; paras: Record<number, number> }
-  >();
-  for (const app of appearanceData) {
-    const existing = appearanceMap.get(app.characterId);
-    if (existing) {
-      const prev = existing.paras[app.chapter.number];
-      if (prev === undefined) {
-        existing.paras[app.chapter.number] = app.paragraphIndex;
-        existing.chapters.push(app.chapter.number);
-        existing.count++;
-      } else {
-        // keep the FIRST (smallest) paragraph = the first word of the character
-        existing.paras[app.chapter.number] = Math.min(prev, app.paragraphIndex);
-      }
-    } else {
-      appearanceMap.set(app.characterId, {
-        count: 1,
-        chapters: [app.chapter.number],
-        paras: { [app.chapter.number]: app.paragraphIndex },
-      });
-    }
-  }
 
   // Show ALL characters sorted by real mention count
   const visibleCharacters = characters;
@@ -119,9 +86,9 @@ export default async function CharactersPage() {
         <CharactersNetworkView
           characters={visibleCharacters.map((c) => ({
             ...c,
-            appearanceCount: appearanceMap.get(c.id)?.count || c.chapterCount || 0,
-            chapters: appearanceMap.get(c.id)?.chapters || [],
-            chapterParas: appearanceMap.get(c.id)?.paras || {},
+            appearanceCount: c.chapterCount || 0,
+            chapters: [],
+            chapterParas: {},
           }))}
           relations={relations.map((r) => ({
             id: r.id,

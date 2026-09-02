@@ -142,32 +142,60 @@ export function BookPageReader({
   // ══ JUMP TO FIRST WORD + NAME FLASH (3s) ══
   // Arriving via /chapters/<n>?char=<charId>#para-<p> from the character
   // page: scroll to that paragraph and make the character's name glow.
+  // Without #para-<p>, the paragraph index is fetched from the appearances API.
   useEffect(() => {
     const hash = window.location.hash;
     const charId = new URLSearchParams(window.location.search).get("char");
     const paraMatch = hash.match(/^#para-(\d+)$/);
     if (!charId && !paraMatch) return;
 
-    let attempts = 0;
-    const flash = () => {
-      attempts++;
-      const targetPara = paraMatch
-        ? document.getElementById(`para-${paraMatch[1]}`)
-        : document.querySelector(".reader-prose [id^='para-']");
-      if (!targetPara) {
-        if (attempts < 30) setTimeout(flash, 150);
-        return;
-      }
-      targetPara.scrollIntoView({ behavior: "smooth", block: "center" });
+    const flashAt = (paraIndex: string | null) => {
+      let attempts = 0;
+      const flash = () => {
+        attempts++;
+        const targetPara = paraIndex
+          ? document.getElementById(`para-${paraIndex}`)
+          : document.querySelector(".reader-prose [id^='para-']");
+        if (!targetPara) {
+          if (attempts < 30) setTimeout(flash, 150);
+          return;
+        }
+        targetPara.scrollIntoView({ behavior: "smooth", block: "center" });
 
-      if (charId) {
-        const button = Array.from(
-          targetPara.querySelectorAll("[data-char-id]")
-        ).find((b) => b.getAttribute("data-char-id") === charId);
-        if (button) {
-          button.classList.add("char-flash");
-          button.scrollIntoView({ behavior: "smooth", block: "center" });
-          setTimeout(() => button.classList.remove("char-flash"), 3000);
+        if (charId) {
+          const button = Array.from(
+            targetPara.querySelectorAll("[data-char-id]")
+          ).find((b) => b.getAttribute("data-char-id") === charId);
+          if (button) {
+            button.classList.add("char-flash");
+            button.scrollIntoView({ behavior: "smooth", block: "center" });
+            setTimeout(() => button.classList.remove("char-flash"), 3000);
+          } else if (paraIndex) {
+            targetPara.classList.add("ring-2", "ring-gold/50", "rounded");
+            setTimeout(
+              () =>
+                targetPara.classList.remove("ring-2", "ring-gold/50", "rounded"),
+              3000
+            );
+          } else {
+            // char not in the first paragraph — search the whole chapter
+            const all = document.querySelectorAll("[data-char-id]");
+            const hit = Array.from(all).find(
+              (b) => b.getAttribute("data-char-id") === charId
+            );
+            if (hit) {
+              hit.classList.add("char-flash");
+              hit.scrollIntoView({ behavior: "smooth", block: "center" });
+              setTimeout(() => hit.classList.remove("char-flash"), 3000);
+            } else if (paraMatch) {
+              targetPara.classList.add("ring-2", "ring-gold/50", "rounded");
+              setTimeout(
+                () =>
+                  targetPara.classList.remove("ring-2", "ring-gold/50", "rounded"),
+                3000
+              );
+            }
+          }
         } else if (paraMatch) {
           targetPara.classList.add("ring-2", "ring-gold/50", "rounded");
           setTimeout(
@@ -176,16 +204,23 @@ export function BookPageReader({
             3000
           );
         }
-      } else if (paraMatch) {
-        targetPara.classList.add("ring-2", "ring-gold/50", "rounded");
-        setTimeout(
-          () =>
-            targetPara.classList.remove("ring-2", "ring-gold/50", "rounded"),
-          3000
-        );
-      }
+      };
+      setTimeout(flash, 120);
     };
-    setTimeout(flash, 120);
+
+    if (paraMatch) {
+      flashAt(paraMatch[1]);
+    } else if (charId) {
+      fetch(`/api/characters/${charId}/appearances`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          const hit = d?.chapters?.find(
+            (c: { number: number }) => c.number === chapter.number
+          );
+          flashAt(hit ? String(hit.para) : null);
+        })
+        .catch(() => flashAt(null));
+    }
   }, [chapter.number]);
 
   return (

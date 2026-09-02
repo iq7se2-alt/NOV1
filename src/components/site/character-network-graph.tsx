@@ -199,8 +199,10 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
   const [hoveredRel, setHoveredRel] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [zoom, setZoom] = useState(1);
+  const [showRelations, setShowRelations] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string; sub?: string } | null>(null);
+  const [tooltip, setTooltip] = useState<{ text: string; sub?: string } | null>(null);
+  const tooltipElRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -239,12 +241,16 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
   );
 
   // Filtered nodes + edges
+  // With 2k+ relations, rendering every line makes the graph slow and noisy.
+  // Relations render only when: the toggle is on, searching, or a node/faction
+  // is selected — then they are focused anyway.
   const visibleRelations = useMemo(() => {
+    if (!q && !showRelations && selectedId == null && activeFaction == null) return [];
     if (!q) return relations;
     const wanted = new Set<number>();
     for (const c of characters) if (matchesQuery(c.name)) wanted.add(c.id);
     return relations.filter((r) => wanted.has(r.fromId) || wanted.has(r.toId));
-  }, [relations, characters, matchesQuery, q]);
+  }, [relations, characters, matchesQuery, q, showRelations, selectedId, activeFaction]);
 
   const activeIds = useMemo(() => {
     if (selectedId != null) return new Set<number>([selectedId]);
@@ -291,8 +297,20 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
     return `M${p1.x},${p1.y} Q${pc.x},${pc.y} ${p2.x},${p2.y}`;
   }, []);
 
-  const showTooltip = (e: React.MouseEvent, text: string, sub?: string) =>
-    setTooltip({ x: e.clientX, y: e.clientY, text, sub });
+  const showTooltip = (e: React.MouseEvent, text: string, sub?: string) => {
+    setTooltip({ text, sub });
+    moveTooltip(e.clientX, e.clientY);
+  };
+
+  // Tooltip coordinates are updated via direct DOM style (ref) — never via
+  // setState — so following the cursor does not re-render the whole SVG graph.
+  const moveTooltip = (clientX: number, clientY: number) => {
+    const el = tooltipElRef.current;
+    if (el) {
+      el.style.left = `${clientX + 14}px`;
+      el.style.top = `${clientY - 10}px`;
+    }
+  };
 
   const hideTooltip = () => setTooltip(null);
 
@@ -322,7 +340,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
   }, [factionLeaders]);
 
   return (
-    <div ref={containerRef} className="gold-card relative overflow-hidden rounded-xl cosmic-bg">
+    <div ref={containerRef} className="gold-card relative overflow-hidden rounded-xl cosmic-bg" onMouseMove={(e) => moveTooltip(e.clientX, e.clientY)}>
       <div className="starfield absolute inset-0" />
 
       {/* ═══ TOP BAR: search + stats ═══ */}
@@ -339,6 +357,13 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
           <span className="hidden items-center gap-1.5 rounded-full border border-gold/20 bg-gold/10 px-2.5 py-1 sm:inline-flex">
             {toArabicDigits(relations.length)} علاقة
           </span>
+          <button
+            onClick={() => setShowRelations((v) => !v)}
+            className={"rounded-full border px-2.5 py-1 text-xs transition-colors " + (showRelations ? "border-gold/60 bg-gold/20 text-gold" : "border-gold/20 bg-gold/10 text-gold/60 hover:text-gold")}
+            title="إظهار/إخفاء خطوط العلاقات — الإخفاء أسرع وأوضح"
+          >
+            {showRelations ? "إخفاء العلاقات" : "إظهار العلاقات"}
+          </button>
         </div>
 
         <div className="relative">
@@ -518,7 +543,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
             return (
               <g key={m.id} style={{ cursor: "pointer" }} onClick={() => setActiveFaction(isActive ? null : m.id)}
                 onMouseEnter={(e) => showTooltip(e, `عائلة ${m.name}`, `${toArabicDigits(factionCounts.get(m.id) || 0)} شخصية تتبعها`)}
-                onMouseMove={(e) => tooltip && setTooltip({ ...tooltip, x: e.clientX, y: e.clientY })}
+                
                 onMouseLeave={hideTooltip}>
                 <path
                   d={`M50,50 L${50 + 49 * Math.cos(angle - half)},${50 + 49 * Math.sin(angle - half)} A49,49 0 0,0 ${50 + 49 * Math.cos(angle + half)},${50 + 49 * Math.sin(angle + half)} Z`}
@@ -548,7 +573,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
               <g key={rel.id}>
                 <path d={curvePath(fromPos.x, fromPos.y, toPos.x, toPos.y)} fill="none" stroke="transparent" strokeWidth="1.6" style={{ cursor: "pointer" }}
                   onMouseEnter={(e) => relHover(rel, e, true)}
-                  onMouseMove={(e) => tooltip && setTooltip({ ...tooltip, x: e.clientX, y: e.clientY })}
+                  
                   onMouseLeave={(e) => relHover(rel, e, false)} />
                 <path d={curvePath(fromPos.x, fromPos.y, toPos.x, toPos.y)} fill="none" stroke={style.color}
                   strokeWidth={isHovered ? "0.28" : isActive ? "0.2" : "0.12"}
@@ -593,7 +618,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
                   if (!selectedId) setHoveredId(ch.id);
                   showTooltip(e, ch.name, `${toArabicDigits(ch.appearanceCount)} ظهور` + (ch.isMain && !isProtag ? ` · قائد عائلة` : "") + (isProtag ? " · البطل" : ""));
                 }}
-                onMouseMove={(e) => tooltip && setTooltip({ ...tooltip, x: e.clientX, y: e.clientY })}
+                
                 onMouseLeave={() => { if (!selectedId) setHoveredId(null); hideTooltip(); }}
                 opacity={dimmed ? 0.12 : 1}>
                 {/* Protagonist aura */}
@@ -653,14 +678,14 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
         )}
       </div>
 
-      {/* ═══ TOOLTIP ═══ */}
-      {tooltip && tooltip.x > 0 && (
-        <div className="pointer-events-none fixed z-50 rounded-lg border border-gold/30 bg-black/90 px-3 py-2 shadow-xl backdrop-blur-sm"
-          style={{ left: tooltip.x + 14, top: tooltip.y - 10 }}>
-          <p className="font-naskh text-sm font-bold text-gold">{tooltip.text}</p>
-          {tooltip.sub && <p className="mt-0.5 text-[10px] text-gold/60">{tooltip.sub}</p>}
-        </div>
-      )}
+      {/* ═══ TOOLTIP — always mounted; coords via ref so cursor tracking never re-renders the graph ═══ */}
+      <div
+        ref={tooltipElRef}
+        className={"pointer-events-none fixed z-50 rounded-lg border border-gold/30 bg-black/90 px-3 py-2 shadow-xl backdrop-blur-sm transition-opacity duration-100 " + (tooltip ? "opacity-100" : "opacity-0")}
+        style={{ left: -9999, top: -9999 }}>
+        <p className="font-naskh text-sm font-bold text-gold">{tooltip?.text || ""}</p>
+        {tooltip?.sub && <p className="mt-0.5 text-[10px] text-gold/60">{tooltip.sub}</p>}
+      </div>
     </div>
   );
 }

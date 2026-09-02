@@ -95,7 +95,7 @@ export function CharactersNetworkView({
             color: c.color,
             appearanceCount: c.appearanceCount,
             mentionCount: c.mentionCount || 0,
-            chapters: c.chapters,
+            chapters: [],
           }))}
           relations={relations.map((r) => ({
             id: r.id,

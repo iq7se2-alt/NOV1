@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -125,7 +125,7 @@ export function CharactersGrid({
         (a, b) => (b.mentionCount || 0) - (a.mentionCount || 0) || (b.appearanceCount - a.appearanceCount)
       );
     else if (sort === "chapters")
-      sorted.sort((a, b) => b.chapters.length - a.chapters.length);
+      sorted.sort((a, b) => (b.chapterCount || b.chapters.length) - (a.chapterCount || a.chapters.length));
     else if (sort === "name") sorted.sort((a, b) => a.name.localeCompare(b.name, "ar"));
     return sorted;
   }, [characters, q, filter, sort, relations]);
@@ -136,6 +136,27 @@ export function CharactersGrid({
   const selectedRelations = selectedId
     ? relations.filter((r) => r.fromId === selectedId || r.toId === selectedId)
     : [];
+
+  // Appearances load on demand from the API when a card opens
+  const [appearances, setAppearances] = useState<
+    { number: number; para: number }[] | null
+  >(null);
+  useEffect(() => {
+    setAppearances(null);
+    if (!selectedId) return;
+    let alive = true;
+    fetch(`/api/characters/${selectedId}/appearances`)
+      .then((r) => (r.ok ? r.json() : { chapters: [] }))
+      .then((d) => {
+        if (alive) setAppearances(d.chapters || []);
+      })
+      .catch(() => {
+        if (alive) setAppearances([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [selectedId]);
 
   // global rank by mentions (position among ALL characters)
   const rankOf = useMemo(() => {
@@ -319,7 +340,7 @@ export function CharactersGrid({
               <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <BookOpen className="h-2.5 w-2.5" />
-                  {toArabicDigits(char.chapters.length)}
+                  {toArabicDigits(char.chapterCount || char.chapters.length)}
                 </span>
                 {charRels.length > 0 && (
                   <span className="flex items-center gap-1 text-gold/60">
@@ -332,7 +353,7 @@ export function CharactersGrid({
               {/* First appearance quick link */}
               {char.firstChapter != null && (
                 <Link
-                  href={`/chapters/${char.firstChapter}?char=${char.id}#para-${char.chapterParas?.[char.firstChapter] ?? 0}`}
+                  href={`/chapters/${char.firstChapter}?char=${char.id}`}
                   onClick={(e) => e.stopPropagation()}
                   className="mt-2 inline-flex items-center gap-1 rounded-md border border-gold/20 bg-gold/5 px-2 py-0.5 text-[9px] text-gold/70 transition-all hover:border-gold/50 hover:bg-gold/15 hover:text-gold"
                   title="اذهب إلى أول ظهور وسيُظلل الاسم"
@@ -434,7 +455,7 @@ export function CharactersGrid({
                 </div>
                 <div className="rounded-lg border border-gold/20 bg-muted/50 p-3 text-center">
                   <div className="font-bold text-gold">
-                    {toArabicDigits(selected.chapters.length)}
+                    {toArabicDigits(appearances?.length ?? selected.chapterCount ?? 0)}
                   </div>
                   <div className="text-[10px] text-muted-foreground">فصل</div>
                 </div>
@@ -449,7 +470,7 @@ export function CharactersGrid({
               {/* First appearance hero link */}
               {selected.firstChapter != null && (
                 <Link
-                  href={`/chapters/${selected.firstChapter}?char=${selected.id}#para-${selected.chapterParas?.[selected.firstChapter] ?? 0}`}
+                  href={`/chapters/${selected.firstChapter}?char=${selected.id}`}
                   className="mb-4 flex items-center justify-between rounded-xl border border-gold/30 bg-gradient-to-l from-gold/15 via-gold/5 to-transparent p-3 transition-all hover:border-gold/60 hover:from-gold/25"
                 >
                   <div className="flex items-center gap-2">
@@ -469,37 +490,33 @@ export function CharactersGrid({
               )}
 
               {/* Chapter appearances — clickable, links to chapter with flash */}
-              {selected.chapters.length > 0 && (
+              {(appearances === null || appearances.length > 0) && (
                 <div className="mb-4">
                   <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gold/80">
                     <BookOpen className="h-4 w-4" />
-                    ظهر في {toArabicDigits(selected.chapters.length)} فصل
+                    {appearances
+                      ? `ظهر في ${toArabicDigits(appearances.length)} فصل`
+                      : "جلب الفصول..."}
                   </h3>
                   <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
-                    {selected.chapters
-                      .sort((a, b) => a - b)
-                      .slice(0, 100)
-                      .map((chNum) => {
-                        const para = selected.chapterParas?.[chNum];
-                        return (
-                          <Link
-                            key={chNum}
-                            href={`/chapters/${chNum}?char=${selected.id}#para-${para ?? 0}`}
-                            className="group flex flex-col items-center justify-center rounded-md border border-gold/20 bg-gold/5 px-2 py-1 text-[11px] text-gold/80 transition-all hover:border-gold/50 hover:bg-gold/15 hover:text-gold"
-                            title={`الفصل ${chNum} — اضغط للذهاب إلى أول ظهور (فقرة ${toArabicDigits((para ?? 0) + 1)}) وتظليل اسم الشخصية`}
-                          >
-                            <span className="font-bold leading-tight">
-                              {toArabicDigits(chNum)}
-                            </span>
-                            <span className="text-[8px] leading-tight text-gold/50 group-hover:text-gold/80">
-                              {toArabicDigits((para ?? 0) + 1)} فقرة
-                            </span>
-                          </Link>
-                        );
-                      })}
-                    {selected.chapters.length > 100 && (
+                    {(appearances || []).slice(0, 100).map(({ number: chNum, para }) => (
+                      <Link
+                        key={chNum}
+                        href={`/chapters/${chNum}?char=${selected.id}#para-${para}`}
+                        className="group flex flex-col items-center justify-center rounded-md border border-gold/20 bg-gold/5 px-2 py-1 text-[11px] text-gold/80 transition-all hover:border-gold/50 hover:bg-gold/15 hover:text-gold"
+                        title={`الفصل ${chNum} — اضغط للذهاب إلى أول ظهور (فقرة ${toArabicDigits(para + 1)}) وتظليل اسم الشخصية`}
+                      >
+                        <span className="font-bold leading-tight">
+                          {toArabicDigits(chNum)}
+                        </span>
+                        <span className="text-[8px] leading-tight text-gold/50 group-hover:text-gold/80">
+                          {toArabicDigits(para + 1)} فقرة
+                        </span>
+                      </Link>
+                    ))}
+                    {appearances && appearances.length > 100 && (
                       <span className="text-[10px] text-muted-foreground p-1">
-                        +{toArabicDigits(selected.chapters.length - 100)} أخرى
+                        +{toArabicDigits(appearances.length - 100)} أخرى
                       </span>
                     )}
                   </div>

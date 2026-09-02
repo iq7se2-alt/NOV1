@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Type, MessageSquare, Loader2, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, Type, MessageSquare, Loader2, Settings, Flame, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -614,27 +614,53 @@ function CharacterMention({ character, name }: { character: Character | undefine
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="inline-flex cursor-pointer font-semibold text-gold transition-colors hover:text-purple">
+        <button
+          data-char-id={character.id}
+          className="inline-flex cursor-pointer font-semibold text-gold transition-colors hover:text-purple"
+        >
           {name}
         </button>
       </PopoverTrigger>
-      <PopoverContent side="top" className="w-64 border-gold/25 bg-popover p-0" align="center">
-        {character.imageUrl ? (
-          <div className="relative aspect-square w-full overflow-hidden rounded-t-md">
-            <img src={character.imageUrl} alt={character.name} className="h-full w-full object-cover" />
-          </div>
-        ) : (
-          <div className="flex aspect-square w-full items-center justify-center rounded-t-md bg-accent">
-            <span className="font-naskh text-4xl font-bold text-gold/40">{character.name.charAt(0)}</span>
-          </div>
-        )}
+      <PopoverContent side="top" className="w-72 border-gold/25 bg-popover p-0" align="center">
+        <div
+          className="relative w-full overflow-hidden rounded-t-md"
+          style={{ background: "linear-gradient(135deg, rgba(212,168,67,0.12), transparent 60%)" }}
+        >
+          {character.imageUrl ? (
+            <img src={character.imageUrl} alt={character.name} className="max-h-72 w-full object-contain" />
+          ) : (
+            <div className="flex aspect-square w-full items-center justify-center">
+              <span className="font-naskh text-6xl font-bold text-gold/40">{character.name.charAt(0)}</span>
+            </div>
+          )}
+          {character.kind && character.kind !== "person" && (
+            <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-gold backdrop-blur-sm">
+              {{ faction: "فصيلة", group: "فرقة", army: "جيش", creature: "مخلوق", place: "مكان" }[character.kind] || ""}
+            </span>
+          )}
+        </div>
         <div className="p-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-naskh text-lg font-bold text-foreground">{character.name}</h3>
             {character.isMain && <span className="rounded bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold">رئيسي</span>}
+            {(character.mentionCount || 0) > 0 && (
+              <span className="flex items-center gap-0.5 rounded-full border border-gold/25 px-1.5 py-0.5 text-[10px] text-gold/80">
+                <Flame className="h-2.5 w-2.5 text-orange-500" />
+                {toArabicDigits(character.mentionCount || 0)} ذكر
+              </span>
+            )}
           </div>
           {character.nameEn && <p className="text-xs text-muted-foreground">{character.nameEn}</p>}
           {character.description && <p className="mt-2 text-sm leading-relaxed text-foreground/80">{character.description}</p>}
+          {character.firstChapter != null && (
+            <Link
+              href={`/chapters/${character.firstChapter}?char=${character.id}`}
+              className="mt-3 inline-flex items-center gap-1 rounded-md border border-gold/20 bg-gold/5 px-2 py-1 text-[10px] text-gold/80 transition-colors hover:border-gold/50 hover:text-gold"
+            >
+              <MapPin className="h-3 w-3" />
+              أول ظهور: الفصل {toArabicDigits(character.firstChapter)}
+            </Link>
+          )}
         </div>
       </PopoverContent>
     </Popover>

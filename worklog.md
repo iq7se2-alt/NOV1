@@ -681,3 +681,30 @@ Stage Summary:
 - 3 real crash-level React bugs fixed (hooks-after-return, refs-in-render, Math.random patching).
 - Characters: 373 clean entries; junk removed; 1 duplicate merged.
 - Work artifacts kept: `_sweep_all_chapters.mjs` (full audit tool), `_live_chapters_v3.json` (API dump), `_audit_db.mjs` (DB audit) — all gitignored.
+
+---
+Task ID: 17
+Agent: main (ZCode)
+Task: BIG QUEST — sync new content, extract ALL entities (people/factions/armies/creatures/places) with real mention counts, images, deep links, luxurious UI; faster network graph; working map.
+
+Work Log:
+- **Content sync**: +19 chapters (2373-2391) from truthnovel.top (total 2403), +3,612 new WP comments (delta since 2026-07-21). Scripts: sync_new_chapters.mjs, sync_new_comments.mjs (reusable).
+- **Discord images**: re-ran fetch_discord_chars (user-provided token, gitignored) → +166 images (332 manifest entries, 447 total files). match_images_v2 → 117 characters with images.
+- **Sub-agents blocked**: account quota/concurrency limits reject ALL Agent spawns. Extraction done MANUALLY by main agent: batch_104 (ch 2056-2075, 88 entities + 50 relations) and batch_105 (ch 2076-2095, 65 entities + 57 relations) read chapter-by-chapter and hand-extracted. 16 batches remain (106-121, ch 2096-2402).
+- **Discovered the previous _quest/ pipeline** (from an opencode/Cline session, 103/121 batches done, 6,171 entities) — continued it instead of restarting. User rejected automated SDK extraction due to accuracy concerns; manual extraction is the quality bar.
+- **Pipeline executed**: merge_batches (cluster 6,336 raw → 1,747 canonical entities) → count_mentions (REAL per-name occurrence regex counting across all 2403 chapters, e.g. زارا 948 mentions) → apply_to_db (662 chars updated, 187 created → 741 chars; 87,542 ChapterCharacter rows rebuilt from 13,587; locations updated/created) → apply_relations.mjs (NEW: 2,650 collected → 1,977 unique relations after dedupe, from 6! Types: عدو 752, تابع 632, قائد 618...). Mojibake relation types decoded.
+- **Locations**: 226 total; 134 had default center position (50,50) → distributed along the chronological journey with deterministic jitter (interpolated between positioned neighbors).
+- **UI overhaul**:
+  - New API `GET /api/characters/[id]/appearances` — on-demand chapter list with first-mention paragraph. Characters page now loads ONLY characters+relations server-side (was loading 87,542 appearance rows every visit).
+  - characters-grid.tsx: modal fetches appearances when opened; chapter chips link `?char=<id>#para-<p>`; stats grid shows real mention/chapter/relation counts.
+  - book-page-reader.tsx deep-link effect: without `#para-`, fetches the right paragraph from the API; fallback searches whole chapter for the char button; reader-view CharacterMention now has `data-char-id` (flash works in both readers).
+  - Fancy character popover in chapter: full image (object-contain), kind badge, mention count, first-appearance deep link.
+  - Character type extended (kind/mentionCount/firstChapter) in src/lib/characters.ts.
+  - Network graph perf: tooltip coordinates now update via direct DOM ref (was setState per mousemove → full 800-element re-render); relations hidden by default behind "إظهار العلاقات" toggle (3,980 paths rendered → 0; auto-show on search/selection). Graph: 771 circles + 26 wedges idle.
+- **CRITICAL FIX — site-wide 500s**: page rendering broke (500 on every route, "Failed to write app endpoint /page — Parsing glob pattern"). Root cause: TWO zero-byte junk files at project root (`({[k]` and `-1)console.log(l)})})()`) created by botched commands in a previous AI session — Tailwind 4's auto-source glob picked the filename's "extension" `log(l)})})()` into its brace pattern → unbalanced glob → every page failed. Also disk was at 1.27GB free (1.2GB of DB backups) — cleaned old backups, kept 1.
+- **Verify**: tsc 0, eslint 0, all routes 200 (home/characters/worldmap/chapters/1), graph renders 771 nodes fast, header shows "٧٤١ كيان · ١٩٧٧ علاقة · مرتّبة بعدد الذكر".
+
+Stage Summary:
+- Data: 2,403 chapters, 741 entities (real mention counts), 87,542 appearance rows with paragraph positions, 1,977 relations, 226 locations positioned, 117 char images.
+- UI: on-demand appearances API, deep-link flash everywhere, fancy popovers, fast clear network graph.
+- Pending: batches 106-121 (16 left, ch 2096-2402) to be extracted manually; human-reviewed char merges (بارون/البارون, بيلي/بيلي بورتون).

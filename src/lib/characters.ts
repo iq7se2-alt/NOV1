@@ -9,6 +9,9 @@ export type Character = {
   imageUrl: string | null;
   color: string | null;
   isMain: boolean;
+  kind?: string | null;
+  mentionCount?: number;
+  firstChapter?: number | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 };
