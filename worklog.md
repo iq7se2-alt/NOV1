@@ -708,3 +708,13 @@ Stage Summary:
 - Data: 2,403 chapters, 741 entities (real mention counts), 87,542 appearance rows with paragraph positions, 1,977 relations, 226 locations positioned, 117 char images.
 - UI: on-demand appearances API, deep-link flash everywhere, fancy popovers, fast clear network graph.
 - Pending: batches 106-121 (16 left, ch 2096-2402) to be extracted manually; human-reviewed char merges (بارون/البارون, بيلي/بيلي بورتون).
+
+---
+Task ID: 17b (continuation)
+Agent: main (ZCode)
+Work Log:
+- Extracted batch 106 manually (ch 2096-2109 + 5 fillers 2104.x): 33 entities + 36 relations — هيلين ديسترا (عاهلة الترميد), هيلمور's eight-sector invasion, دامير's base destroyed by أليكساندر's سرب نوتة-4, دارفيون retreats, زافاروس "شرفي والقطاع 106 واحد", طاغوت القهر, the 2104.x filler saga (أثير + هينوا + كوكب تريم + مانسا + عمالقة + بانيبال/أركي).
+- Re-ran full pipeline: 1,758 canonical entities → DB: 743 chars, 2,006 unique relations, 227 locations, 87,605 appearance rows. أثير now in DB.
+- Discovered sub-agent spawns are blocked account-wide (concurrency + quota) — manual extraction is the only path; also confirmed _quest/ is gitignored by design (2414 text files) so batch JSONs live on disk only, DB is the deliverable.
+- Mojibake red herring: some persisted-output previews show double-encoded Arabic but node byte-comparison proved files/DB are correct UTF-8 (display artifact only). Re-dumped ch_2100.txt.
+- Pending: batches 107-121 (15 left, ch 2110-2402).
