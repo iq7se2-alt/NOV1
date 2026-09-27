@@ -150,3 +150,33 @@ Stage Summary:
 - Data: 121/121 batches extracted; 1,926 canonical entities; 110,873 mentions; 788 chars + 249 locations in DB; 90,427 appearance rows; 2,413 relations; 117 char images; map coordinates deterministic.
 - UI: characters page sorted/filtered by real counts; network graph faction-correct, memoized, pannable; world map fully visible + decluttered.
 - Pending: browser visual QA (Browser MCP extension needs user to connect); 62 chars with >=100 mentions have no image in the Discord manifest; possible person/faction kind mislabels from extraction (e.g. هيدريك=faction); commit after QA.
+
+---
+Task ID: 18
+Agent: main (opencode)
+Task: Post-bigquest improvements — code quality, performance, data cleanup, four new features.
+
+Work Log:
+- **DB housekeeping**: deleted 3 oldest DB backups (180MB freed, 5 kept, 8.67GB free).
+- **Network graph refactor**: split 843-line `character-network-graph.tsx` into `src/components/site/network/{types,constants,layout,panels}.tsx|ts` (main file now 514 lines).
+- **Progressive rendering**:
+  - graph renders 200 nodes first + "عرض ٣٠٠ شخصية أخرى" button; every `isMain` is always included so no family loses its leader; search still spans the full list.
+  - character grid renders 60 cards first + "عرض ٦٠ كرتاً آخر".
+  - Payload unchanged (126KB gzip) — the win was DOM count, not bytes.
+- **Data quality — verified against the corpus, not guessed**:
+  - `kind` fixes: هيدريك faction→person (292 title/pronoun hits), آرو creature→person (63 hits). Confirmed as correctly-typed creatures and left alone: كريكسوس/دورغر/ديفوس (ويفرن), نيري/روكي (أرواح الكواكب), الترينت.
+  - 350 boilerplate descriptions ("يظهر في X فصل…") replaced with the agents' real ones from `_quest/entities_canonical.json`; 20 zero-mention rows had the fake text cleared.
+  - De-duplicated ريتشارد/كاربان (both had Richard's bio), wrote distinct ones for فايرون/بارون and مختار السماء الثاني from real excerpts.
+  - Final audit: 0 boilerplate, 0 duplicate description groups.
+- **Reader performance**:
+  - `cinematic-mode.tsx` wrapped every word in a `<span>` (~2 per word, re-created every 30ms tick). Now only revealed words + a 60-word fade window get spans; the rest is plain text.
+  - `reader-view.tsx` CinematicContent: same windowing for the active paragraph.
+  - `word-ocean.tsx`: `canvas.offsetWidth/Height` was read 4× per word per frame (layout flush every word) — cached; `ctx.font` assigned only on change; RAF loop pauses on `visibilitychange`.
+- **worklog split**: 83.5KB → 19KB main (5 recent entries) + `worklog.archive/2026-09-early.md` (9 older).
+- **New features**:
+  - Relations export: `/api/character-relations?format=csv|json` (CSV carries a BOM so Excel reads the Arabic); buttons next to the view toggle.
+  - `/top` — most-viewed & most-discussed chapters with a recharts bar chart (metric toggle, click a bar to open the chapter). Wired into navbar + footer.
+  - `/timeline` — per-50-chapter density chart (distinct characters / new locations / words) plus 275 first-appearance milestones with filters.
+  - Search: `/api/search?entitiesOnly=1` returns name-matched characters/places (Arabic-normalised, starts-with ranked first); the dialog shows them above the full-text results.
+- **Images**: 62 characters with >=100 mentions have no image. Audited all 447 files on disk — no unused file matches any of them, and most are non-human entities (empires, species, generic titles like "المارشال") that shouldn't have portraits. Nothing to recover; needs new artwork if wanted.
+- **Verify**: tsc 0, eslint 0 errors (21 pre-existing warnings), `next build` green with /top and /timeline in the route table. One Turbopack font-fetch failure was a transient network error — rebuild was clean.
