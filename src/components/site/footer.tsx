@@ -57,6 +57,12 @@ export function SiteFooter() {
               الأكثر تفاعلاً
             </Link>
             <Link
+              href="/timeline"
+              className="text-muted-foreground transition-colors hover:text-gold"
+            >
+              الخط الزمني
+            </Link>
+            <Link
               href="/comments"
               className="text-muted-foreground transition-colors hover:text-gold"
             >

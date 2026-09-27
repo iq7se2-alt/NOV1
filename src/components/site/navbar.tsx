@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, BookOpen, Home, Lock, X, Bell, Users, Trophy, MapPin, MessageSquare, Bookmark, Search as SearchIcon } from "lucide-react";
+import { Menu, BookOpen, Home, Lock, X, Bell, Users, Trophy, MapPin, MessageSquare, Bookmark, Search as SearchIcon, Clock } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import {
   Popover,
@@ -26,6 +26,7 @@ const NAV_LINKS = [
   { href: "/chapters", label: "الفصول", labelEn: "Chapters", icon: BookOpen },
   { href: "/characters", label: "الشخصيات", labelEn: "Characters", icon: Users },
   { href: "/top", label: "الأكثر تفاعلاً", labelEn: "Top", icon: Trophy },
+  { href: "/timeline", label: "الخط الزمني", labelEn: "Timeline", icon: Clock },
   { href: "/comments", label: "التعليقات", labelEn: "Comments", icon: MessageSquare },
   { href: "/worldmap", label: "الخريطة", labelEn: "World Map", icon: MapPin },
   { href: "/bookmarks", label: "المفضلة", labelEn: "Bookmarks", icon: Bookmark },
