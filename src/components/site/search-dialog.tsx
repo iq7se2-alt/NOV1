@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, User, MapPin } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,19 @@ type SearchResponse = {
   totalChapters: number;
   totalMatches: number;
   results: SearchResult[];
+  entities?: EntitySuggestion[];
+};
+
+/** Character / place suggested because its name matches the query. */
+type EntitySuggestion = {
+  type: "character" | "location";
+  id: number;
+  name: string;
+  sub: string | null;
+  kind: string | null;
+  mentionCount: number;
+  imageUrl: string | null;
+  chapter: number | null;
 };
 
 type SearchDialogContextValue = {
@@ -64,6 +77,7 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 400);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [entities, setEntities] = useState<EntitySuggestion[]>([]);
   const [totalMatches, setTotalMatches] = useState(0);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,12 +86,27 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
     const trimmed = q.trim();
     if (trimmed.length < 2) {
       setResults([]);
+      setEntities([]);
       setTotalMatches(0);
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
+      // Entity suggestions are cheap and come back fast; the full-text scan
+      // over 2,414 chapters is the slow part, so it runs on its own request
+      // and only fills the results list.
+      const entRes = await fetch(
+        `/api/search?q=${encodeURIComponent(trimmed)}&entitiesOnly=1`,
+        { cache: "no-store" }
+      );
+      if (entRes.ok) {
+        const entData = (await entRes.json()) as { entities?: EntitySuggestion[] };
+        setEntities(entData.entities || []);
+      } else {
+        setEntities([]);
+      }
+
       const res = await fetch(
         `/api/search?q=${encodeURIComponent(trimmed)}&limit=20`,
         { cache: "no-store" }
@@ -106,7 +135,7 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
   const trimmedQuery = query.trim();
   const showEmptyHint = trimmedQuery.length < 2;
   const showNoResults =
-    !showEmptyHint && !isLoading && results.length === 0;
+    !showEmptyHint && !isLoading && results.length === 0 && entities.length === 0;
 
   // Build the ?q= query param for result links (use trimmed query so the
   // reader highlights what was actually searched).
@@ -149,6 +178,66 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
 
       {/* Results */}
       <div className="max-h-[60vh] overflow-y-auto p-3">
+        {/* Entity suggestions — characters & places matching the query */}
+        {entities.length > 0 && (
+          <div className="mb-4">
+            <p className="mb-2 px-1 text-[10px] font-bold text-gold/70">
+              شخصيات وأماكن
+            </p>
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {entities.map((e) => (
+                <li key={`${e.type}-${e.id}`}>
+                  <Link
+                    href={
+                      e.type === "character"
+                        ? `/characters?char=${e.id}`
+                        : e.chapter
+                          ? `/chapters/${e.chapter}`
+                          : "/worldmap"
+                    }
+                    onClick={handleResultClick}
+                    className="gold-card flex items-center gap-2 rounded-lg p-2 transition-colors hover:border-gold/40"
+                  >
+                    {e.imageUrl ? (
+                      <img
+                        src={e.imageUrl}
+                        alt={e.name}
+                        className="h-8 w-8 shrink-0 rounded-full border border-gold/25 object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span
+                        className={
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border " +
+                          (e.type === "character"
+                            ? "border-gold/25 bg-gold/10"
+                            : "border-pink/30 bg-pink/10")
+                        }
+                      >
+                        {e.type === "character" ? (
+                          <User className="h-3.5 w-3.5 text-gold/70" />
+                        ) : (
+                          <MapPin className="h-3.5 w-3.5 text-pink/70" />
+                        )}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-naskh text-sm text-foreground">
+                        {e.name}
+                      </span>
+                      <span className="block text-[9px] text-muted-foreground">
+                        {e.type === "character" ? "شخصية" : "مكان"}
+                        {e.mentionCount > 0 ? ` · ${toArabicDigits(e.mentionCount)} ذكر` : ""}
+                        {e.chapter ? ` · الفصل ${toArabicDigits(e.chapter)}` : ""}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {showEmptyHint ? (
           <div className="py-12 text-center font-naskh text-sm text-muted-foreground">
             ابدأ الكتابة للبحث
