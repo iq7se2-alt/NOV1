@@ -28,12 +28,13 @@ export function ChapterCharactersStrip({
             href="/characters"
             className="group flex w-20 shrink-0 flex-col items-center"
           >
-            <div className="relative h-24 w-20 overflow-hidden rounded-md border border-gold/25 bg-accent transition-all group-hover:border-gold/60 group-hover:shadow-lg group-hover:shadow-gold/20">
+            <div className="relative flex h-24 w-20 items-center justify-center overflow-hidden rounded-md border border-gold/25 bg-black/30 transition-all group-hover:border-gold/60 group-hover:shadow-lg group-hover:shadow-gold/20">
               {char.imageUrl ? (
                 <img
                   src={char.imageUrl}
                   alt={char.name}
-                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                  className="max-h-full max-w-full object-contain transition-transform group-hover:scale-105"
+                  loading="lazy"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">

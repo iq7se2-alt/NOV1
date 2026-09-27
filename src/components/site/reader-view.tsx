@@ -627,7 +627,17 @@ function CharacterMention({ character, name }: { character: Character | undefine
           style={{ background: "linear-gradient(135deg, rgba(212,168,67,0.12), transparent 60%)" }}
         >
           {character.imageUrl ? (
-            <img src={character.imageUrl} alt={character.name} className="max-h-72 w-full object-contain" />
+            // Fixed 3:4 box + object-contain: the whole portrait is always
+            // visible. With only max-h + w-full the browser sizes the <img> to
+            // its intrinsic ratio and the overflow-hidden parent crops it.
+            <div className="flex aspect-[3/4] w-full items-center justify-center bg-black/30">
+              <img
+                src={character.imageUrl}
+                alt={character.name}
+                className="h-full w-full object-contain"
+                loading="lazy"
+              />
+            </div>
           ) : (
             <div className="flex aspect-square w-full items-center justify-center">
               <span className="font-naskh text-6xl font-bold text-gold/40">{character.name.charAt(0)}</span>

@@ -65,8 +65,12 @@ function CharacterMention({ character, name }: { character: Character | undefine
       </PopoverTrigger>
       <PopoverContent side="top" className="w-64 border-gold/25 bg-popover p-0" align="center">
         {character.imageUrl ? (
-          <div className="relative aspect-square w-full overflow-hidden rounded-t-md">
-            <img src={character.imageUrl} alt={character.name} className="h-full w-full object-cover" />
+          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-t-md bg-black/30">
+            <img
+              src={character.imageUrl}
+              alt={character.name}
+              className="h-full w-full object-contain"
+            />
           </div>
         ) : (
           <div className="flex aspect-square w-full items-center justify-center rounded-t-md bg-accent">

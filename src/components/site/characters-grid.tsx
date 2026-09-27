@@ -291,7 +291,7 @@ export function CharactersGrid({
                       src={char.imageUrl}
                       alt={char.name}
                       loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-110"
                     />
                   ) : (
                     <div
@@ -388,14 +388,16 @@ export function CharactersGrid({
             className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-gold/30 bg-background shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header with image — FULL image, not cropped */}
+            {/* Header with image — always fully visible (auto size + contain) */}
             <div className="relative overflow-hidden rounded-t-2xl bg-muted">
               {selected.imageUrl ? (
-                <img
-                  src={selected.imageUrl}
-                  alt={selected.name}
-                  className="max-h-[40vh] w-full object-contain"
-                />
+                <div className="flex max-h-[40vh] items-center justify-center bg-black/30 p-2">
+                  <img
+                    src={selected.imageUrl}
+                    alt={selected.name}
+                    className="max-h-[36vh] max-w-full object-contain"
+                  />
+                </div>
               ) : (
                 <div className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
                   <span className="font-naskh text-7xl font-bold text-gold/30">
