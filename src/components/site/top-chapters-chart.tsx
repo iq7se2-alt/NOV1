@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Bar,
   BarChart,
@@ -22,6 +22,7 @@ const GOLD_SOFT = "#e3c878";
 /** Bar chart of the most-viewed chapters; click a bar to open it. */
 export function TopChaptersChart({ data }: { data: Point[] }) {
   const [metric, setMetric] = useState<"views" | "comments">("views");
+  const router = useRouter();
 
   const rows = [...data].sort((a, b) => b[metric] - a[metric]);
   const max = Math.max(1, ...rows.map((r) => r[metric]));
@@ -108,9 +109,7 @@ export function TopChaptersChart({ data }: { data: Point[] }) {
                   fill="url(#barGold)"
                   fillOpacity={i < 3 ? 1 : 0.55}
                   className="cursor-pointer"
-                  onClick={() => {
-                    window.location.href = `/chapters/${r.number}`;
-                  }}
+                  onClick={() => router.push(`/chapters/${r.number}`)}
                 />
               ))}
             </Bar>
