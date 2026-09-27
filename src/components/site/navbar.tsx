@@ -25,6 +25,7 @@ const NAV_LINKS = [
   { href: "/", label: "الرئيسية", labelEn: "Home", icon: Home },
   { href: "/chapters", label: "الفصول", labelEn: "Chapters", icon: BookOpen },
   { href: "/characters", label: "الشخصيات", labelEn: "Characters", icon: Users },
+  { href: "/top", label: "الأكثر تفاعلاً", labelEn: "Top", icon: Trophy },
   { href: "/comments", label: "التعليقات", labelEn: "Comments", icon: MessageSquare },
   { href: "/worldmap", label: "الخريطة", labelEn: "World Map", icon: MapPin },
   { href: "/bookmarks", label: "المفضلة", labelEn: "Bookmarks", icon: Bookmark },

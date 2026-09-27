@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LayoutGrid, GitGraph } from "lucide-react";
+import { LayoutGrid, GitGraph, FileDown, Braces } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CharactersGrid } from "@/components/site/characters-grid";
 import { CharacterNetworkGraph } from "@/components/site/character-network-graph";
@@ -53,8 +53,8 @@ export function CharactersNetworkView({
 
   return (
     <div>
-      {/* ═══ VIEW TOGGLE ═══ */}
-      <div className="mb-6 flex items-center justify-center gap-2">
+      {/* ═══ VIEW TOGGLE + EXPORT ═══ */}
+      <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
         <div className="inline-flex rounded-lg border border-gold/20 bg-muted/40 p-0.5">
           <button
             onClick={() => setViewMode("grid")}
@@ -81,6 +81,23 @@ export function CharactersNetworkView({
             دائرة العلاقات
           </button>
         </div>
+
+        <a
+          href="/api/character-relations?format=csv"
+          className="flex items-center gap-1.5 rounded-lg border border-gold/20 bg-muted/40 px-3 py-2 text-xs text-gold/60 transition-colors hover:border-gold/40 hover:text-gold"
+          title="تحميل كل العلاقات كملف CSV يفتح في Excel"
+        >
+          <FileDown className="h-3.5 w-3.5" />
+          تصدير CSV
+        </a>
+        <a
+          href="/api/character-relations?format=json"
+          className="flex items-center gap-1.5 rounded-lg border border-gold/20 bg-muted/40 px-3 py-2 text-xs text-gold/60 transition-colors hover:border-gold/40 hover:text-gold"
+          title="تحميل شبكة العلاقات كملف JSON"
+        >
+          <Braces className="h-3.5 w-3.5" />
+          تصدير JSON
+        </a>
       </div>
 
       {/* ═══ VIEW CONTENT ═══ */}

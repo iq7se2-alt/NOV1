@@ -51,6 +51,12 @@ export function SiteFooter() {
               الشخصيات والعلاقات
             </Link>
             <Link
+              href="/top"
+              className="text-muted-foreground transition-colors hover:text-gold"
+            >
+              الأكثر تفاعلاً
+            </Link>
+            <Link
               href="/comments"
               className="text-muted-foreground transition-colors hover:text-gold"
             >
