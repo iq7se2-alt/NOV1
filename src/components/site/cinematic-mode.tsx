@@ -132,31 +132,60 @@ export function CinematicMode({
   }
 
   // Build the cinematic content — progressively revealed
+  //
+  // Perf: a long chapter is 1k-2k words. Rendering a <span> per word means
+  // thousands of elements re-created on every 30ms tick, and every one of them
+  // carries a CSS transition. Instead we only wrap the words that are
+  // currently VISIBLE or about to fade in (FADE_WINDOW); everything further
+  // out is emitted as plain text with no element at all.
+  const FADE_WINDOW = 60;
   let wordCounter = 0;
   const renderedParagraphs = paragraphs.map((p, paraIdx) => {
     const words = p.split(/(\s+)/);
-    const renderedWords = words.map((word, i) => {
-      if (/^\s+$/.test(word) || word === "") {
-        return <span key={i}>{word}</span>;
+    const out: React.ReactNode[] = [];
+    let plainRun = "";          // consecutive not-yet-revealed words
+    let plainKey = paraIdx * 100000;
+
+    const flushPlain = () => {
+      if (plainRun) {
+        out.push(<span key={plainKey++}>{plainRun}</span>);
+        plainRun = "";
       }
-      const isVisible = wordCounter < visibleWords;
-      wordCounter++;
-      return (
-        <span
-          key={i}
-          className={cn(
-            "transition-all duration-500",
-            isVisible ? "opacity-100 blur-0" : "opacity-0 blur-sm"
-          )}
-        >
-          {word}
-        </span>
-      );
-    });
+    };
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      if (/^\s+$/.test(word) || word === "") {
+        plainRun += word;
+        continue;
+      }
+      const idx = wordCounter++;
+      if (idx < visibleWords) {
+        flushPlain();
+        out.push(
+          <span key={`w${idx}`} className="opacity-100 blur-0 transition-all duration-500">
+            {word}
+          </span>
+        );
+      } else if (idx < visibleWords + FADE_WINDOW) {
+        flushPlain();
+        out.push(
+          <span
+            key={`w${idx}`}
+            className="opacity-0 blur-sm transition-all duration-500"
+          >
+            {word}
+          </span>
+        );
+      } else {
+        plainRun += word;
+      }
+    }
+    flushPlain();
 
     return (
       <p key={paraIdx}>
-        {renderedWords}
+        {out}
       </p>
     );
   });

@@ -46,10 +46,17 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Cached canvas size in CSS pixels. Reading canvas.offsetWidth inside the
+    // render loop forces a layout flush for every single word every frame.
+    let cw = canvas.offsetWidth;
+    let ch = canvas.offsetHeight;
+
     const resize = () => {
-      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      cw = canvas.offsetWidth;
+      ch = canvas.offsetHeight;
+      canvas.width = cw * window.devicePixelRatio;
+      canvas.height = ch * window.devicePixelRatio;
+      ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
     };
     resize();
     window.addEventListener("resize", resize);
@@ -59,8 +66,8 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
       const w = NOVEL_WORDS[Math.floor(Math.random() * NOVEL_WORDS.length)];
       return {
         text: w,
-        x: Math.random() * canvas.offsetWidth,
-        y: Math.random() * canvas.offsetHeight,
+        x: Math.random() * cw,
+        y: Math.random() * ch,
         vx: (Math.random() - 0.5) * 0.3,
         vy: (Math.random() - 0.5) * 0.2,
         size: 14 + Math.random() * 22,
@@ -108,8 +115,10 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
       mouseRef.current = { x: -1000, y: -1000 };
     });
 
+    let lastFont = "";
+
     const animate = () => {
-      ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+      ctx.clearRect(0, 0, cw, ch);
 
       // Draw wave background
       const time = Date.now() * 0.0005;
@@ -119,9 +128,9 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
         ctx.beginPath();
         ctx.strokeStyle = `hsla(${190 + w * 10}, 60%, 50%, 0.08)`;
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.offsetWidth; x += 5) {
+        for (let x = 0; x < cw; x += 5) {
           const y =
-            canvas.offsetHeight / 2 +
+            ch / 2 +
             Math.sin(x * 0.01 + time + w) * 30 +
             Math.sin(x * 0.02 + time * 1.5 + w) * 15 +
             w * 40;
@@ -137,11 +146,11 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
         word.x += word.vx;
         word.y += word.vy;
 
-        // Wrap around edges
-        if (word.x < -100) word.x = canvas.offsetWidth + 100;
-        if (word.x > canvas.offsetWidth + 100) word.x = -100;
-        if (word.y < -50) word.y = canvas.offsetHeight + 50;
-        if (word.y > canvas.offsetHeight + 50) word.y = -50;
+        // Wrap around edges (uses the cached size — no layout read per word)
+        if (word.x < -100) word.x = cw + 100;
+        if (word.x > cw + 100) word.x = -100;
+        if (word.y < -50) word.y = ch + 50;
+        if (word.y > ch + 50) word.y = -50;
 
         // Mouse interaction (hover glow)
         const dx = mouseRef.current.x - word.x;
@@ -156,8 +165,14 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
           word.burst = burst;
         }
 
-        const fontSize = word.size + (burst > 0 ? burst * 20 : 0);
-        ctx.font = `${hovered || burst > 0 ? "bold" : "normal"} ${fontSize}px var(--font-naskh), serif`;
+        const fontSize = Math.round(word.size + (burst > 0 ? burst * 20 : 0));
+        const font = `${hovered || burst > 0 ? "bold " : ""}${fontSize}px var(--font-naskh), serif`;
+        // Assigning ctx.font re-parses the string and re-resolves the face —
+        // only touch it when it actually changed.
+        if (font !== lastFont) {
+          ctx.font = font;
+          lastFont = font;
+        }
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
@@ -194,12 +209,25 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
 
       animationRef.current = requestAnimationFrame(animate);
     };
+
+    // Pause the loop while the tab is hidden — an ambient decoration does not
+    // need to burn a core animating behind another window.
+    const onVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(animationRef.current);
+      } else {
+        animationRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
     animate();
 
     return () => {
       window.removeEventListener("resize", resize);
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("click", handleClick);
+      document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(animationRef.current);
     };
   }, [active, burstPos]);

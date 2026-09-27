@@ -680,18 +680,41 @@ function CinematicContent({ paragraphs, visibleWords }: { paragraphs: string[]; 
     offsets.push(acc);
     acc += wc;
   }
+  // Only the paragraph holding the reveal edge needs per-word spans, and even
+  // there we stop wrapping past a small window — the rest stays plain text.
+  const FADE_WINDOW = 80;
   return (
     <>
       {paragraphs.map((p, paraIdx) => {
         const start = offsets[paraIdx] ?? 0;
         if (start >= visibleWords) return <p key={paraIdx} style={{ opacity: 0 }}>{p}</p>;
+        const edge = visibleWords - start + FADE_WINDOW; // local index limit
         let count = 0;
-        const parts = p.split(/(\s+)/).map((word, i) => {
-          if (/^\s+$/.test(word) || word === "") return <span key={i}>{word}</span>;
+        const parts: React.ReactNode[] = [];
+        let plain = "";
+        const flush = () => {
+          if (plain) {
+            parts.push(<span key={`t${parts.length}`}>{plain}</span>);
+            plain = "";
+          }
+        };
+        p.split(/(\s+)/).forEach((word, i) => {
+          if (/^\s+$/.test(word) || word === "") {
+            plain += word;
+            return;
+          }
+          if (count > edge) {
+            plain += word;
+            return;
+          }
           const visible = start + count < visibleWords;
           count++;
-          return <span key={i} style={{ opacity: visible ? 1 : 0, transition: "opacity 0.15s ease" }}>{word}</span>;
+          flush();
+          parts.push(
+            <span key={i} style={{ opacity: visible ? 1 : 0, transition: "opacity 0.15s ease" }}>{word}</span>
+          );
         });
+        flush();
         return <p key={paraIdx}>{parts}</p>;
       })}
     </>
