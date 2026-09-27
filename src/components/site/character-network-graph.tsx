@@ -14,6 +14,7 @@ type CharNode = {
   appearanceCount: number;
   mentionCount?: number;
   chapters: number[];
+  factionId?: number | null;
 };
 
 type RelationEdge = {
@@ -71,11 +72,12 @@ type Layout = {
  * Solar-system layout:
  *  - Protagonist (most appearances) sits at the golden core.
  *  - The other main characters form a ring around the core.
- *  - Every other character is placed in the angular sector of the main it
- *    co-appears with the most → tidy "royal houses".
+ *  - Every other character goes to the faction of its `factionId`
+ *    (precomputed server-side from real chapter co-occurrence), falling
+ *    back to client-side co-occurrence when chapters are provided.
  *  - Sectors are drawn as concentric "nightingale" rings so everything fits
  *    inside the canvas regardless of how skewed the house sizes are.
- *  - Characters with no co-occurrence land on an outer "drifter" ring.
+ *  - Characters with no faction land on an outer "drifter" ring.
  */
 function computeLayout(chars: CharNode[]): Layout {
   const pos = new Map<number, { x: number; y: number }>();
@@ -95,19 +97,27 @@ function computeLayout(chars: CharNode[]): Layout {
     pos.set(m.id, { x: cx + R_MAIN * Math.cos(angle), y: cy + R_MAIN * Math.sin(angle) });
   });
 
-  // Faction assignment: closest main by co-occurrence
+  const mainIds = new Set(mains.map((m) => m.id));
+  const hasChapters = chars.some((c) => c.chapters.length > 0);
   const mainChapters = new Map<number, Set<number>>();
-  for (const m of mains) mainChapters.set(m.id, new Set(m.chapters));
+  if (hasChapters) for (const m of mains) mainChapters.set(m.id, new Set(m.chapters));
+
   const groups = new Map<number | null, CharNode[]>();
   for (const o of others) {
     let best: number | null = null;
     let bestScore = 0;
-    for (const m of mains) {
-      if (m.id === o.id) continue;
-      const set = mainChapters.get(m.id);
-      let score = 0;
-      for (const ch of o.chapters) if (set?.has(ch)) score++;
-      if (score > bestScore) { bestScore = score; best = m.id; }
+    // Server-precomputed faction wins when it points at a visible main.
+    if (o.factionId != null && mainIds.has(o.factionId)) {
+      best = o.factionId;
+      bestScore = 1;
+    } else if (hasChapters) {
+      for (const m of mains) {
+        if (m.id === o.id) continue;
+        const set = mainChapters.get(m.id);
+        let score = 0;
+        for (const ch of o.chapters) if (set?.has(ch)) score++;
+        if (score > bestScore) { bestScore = score; best = m.id; }
+      }
     }
     const key = bestScore > 0 ? best : null;
     if (key !== null) factionOf.set(o.id, key);
@@ -175,13 +185,15 @@ function computeLayout(chars: CharNode[]): Layout {
     if (r > R_OUT + 2) break;
   }
 
-  // Drifters — outermost ring
+  // Drifters — single outer ring, gap shrinks gracefully when crowded
   if (drifters.length > 0) {
-    const R = 47;
-    drifters.forEach((f, i) => {
-      const angle = (i / drifters.length) * 2 * Math.PI - Math.PI / 2;
-      pos.set(f.id, { x: cx + R * Math.cos(angle), y: cy + R * Math.sin(angle) });
-    });
+    const R = 47.5;
+    const gap = Math.min(MIN_GAP, (2 * Math.PI * R) / Math.max(drifters.length, 1));
+    let k = 0;
+    for (let a = -Math.PI / 2; k < drifters.length; a += gap / R) {
+      pos.set(drifters[k].id, { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) });
+      k++;
+    }
   }
 
   return { pos, factionOf, protagonist };
@@ -199,11 +211,15 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
   const [hoveredRel, setHoveredRel] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [showRelations, setShowRelations] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [tooltip, setTooltip] = useState<{ text: string; sub?: string } | null>(null);
   const tooltipElRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const panRef = useRef<{ sx: number; sy: number; bx: number; by: number; moved: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
+  const [grabbing, setGrabbing] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 60);
@@ -240,6 +256,23 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
     [q]
   );
 
+  // Tooltip coordinates are updated via direct DOM style (ref) — never via
+  // setState — so following the cursor does not re-render the whole SVG graph.
+  const moveTooltip = useCallback((clientX: number, clientY: number) => {
+    const el = tooltipElRef.current;
+    if (el) {
+      el.style.left = `${clientX + 14}px`;
+      el.style.top = `${clientY - 10}px`;
+    }
+  }, []);
+
+  const showTooltip = useCallback((e: React.MouseEvent, text: string, sub?: string) => {
+    setTooltip({ text, sub });
+    moveTooltip(e.clientX, e.clientY);
+  }, [moveTooltip]);
+
+  const hideTooltip = useCallback(() => setTooltip(null), []);
+
   // Filtered nodes + edges
   // With 2k+ relations, rendering every line makes the graph slow and noisy.
   // Relations render only when: the toggle is on, searching, or a node/faction
@@ -252,30 +285,31 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
     return relations.filter((r) => wanted.has(r.fromId) || wanted.has(r.toId));
   }, [relations, characters, matchesQuery, q, showRelations, selectedId, activeFaction]);
 
-  const activeIds = useMemo(() => {
+  // Filter ids: selection / faction / search — hover deliberately excluded so
+  // moving the cursor never re-renders (or re-dims) the whole graph.
+  const filterIds = useMemo(() => {
     if (selectedId != null) return new Set<number>([selectedId]);
     if (activeFaction != null) {
       const s = new Set<number>([activeFaction]);
       for (const f of factionLeaders.map.get(activeFaction) || []) s.add(f.id);
       return s;
     }
-    if (hoveredId != null) return new Set<number>([hoveredId]);
     if (q) {
       const s = new Set<number>();
       for (const c of characters) if (matchesQuery(c.name)) s.add(c.id);
       return s;
     }
     return null;
-  }, [selectedId, activeFaction, hoveredId, q, characters, matchesQuery, factionLeaders]);
+  }, [selectedId, activeFaction, q, characters, matchesQuery, factionLeaders]);
 
   const activeRelIds = useMemo(() => {
-    if (activeIds === null) return null;
+    if (filterIds === null) return null;
     return new Set(
-      visibleRelations.filter((r) => activeIds.has(r.fromId) || activeIds.has(r.toId)).map((r) => r.id)
+      visibleRelations.filter((r) => filterIds.has(r.fromId) || filterIds.has(r.toId)).map((r) => r.id)
     );
-  }, [activeIds, visibleRelations]);
+  }, [filterIds, visibleRelations]);
 
-  const hasFilter = activeIds !== null;
+  const hasFilter = filterIds !== null;
 
   const reset = () => {
     setSelectedId(null);
@@ -284,8 +318,6 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
     setQuery("");
   };
 
-  const toSvg = (x: number, y: number) => ({ x, y }); // already in 0-100 space
-
   const curvePath = useCallback((x1: number, y1: number, x2: number, y2: number) => {
     const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
     const dx = x2 - x1, dy = y2 - y1;
@@ -293,26 +325,8 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
     const offset = Math.min(dist * 0.12, 8);
     const cxp = mx + (dy / dist) * offset;
     const cyp = my - (dx / dist) * offset;
-    const p1 = toSvg(x1, y1), pc = toSvg(cxp, cyp), p2 = toSvg(x2, y2);
-    return `M${p1.x},${p1.y} Q${pc.x},${pc.y} ${p2.x},${p2.y}`;
+    return `M${x1},${y1} Q${cxp},${cyp} ${x2},${y2}`;
   }, []);
-
-  const showTooltip = (e: React.MouseEvent, text: string, sub?: string) => {
-    setTooltip({ text, sub });
-    moveTooltip(e.clientX, e.clientY);
-  };
-
-  // Tooltip coordinates are updated via direct DOM style (ref) — never via
-  // setState — so following the cursor does not re-render the whole SVG graph.
-  const moveTooltip = (clientX: number, clientY: number) => {
-    const el = tooltipElRef.current;
-    if (el) {
-      el.style.left = `${clientX + 14}px`;
-      el.style.top = `${clientY - 10}px`;
-    }
-  };
-
-  const hideTooltip = () => setTooltip(null);
 
   const relHover = (rel: RelationEdge, e: React.MouseEvent, entering: boolean) => {
     if (entering) {
@@ -339,8 +353,98 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
     return m;
   }, [factionLeaders]);
 
+  // ═══ STATIC "others" group ═══
+  // Every non-main character without active filter/hover styling is rendered
+  // into ONE memoized group. While the user only hovers, this array keeps the
+  // exact same element references, so React skips re-diffing hundreds of <g>s.
+  const staticOthers = useMemo(() => {
+    const out: React.ReactNode[] = [];
+    for (const ch of characters) {
+      if (ch.isMain) continue;
+      const p = pos.get(ch.id);
+      if (!p) continue;
+      const dimmed = hasFilter && !filterIds!.has(ch.id);
+      const nodeColor = ch.color || FACTION_COLORS[(factionOf.get(ch.id) != null ? factionIndex.get(factionOf.get(ch.id)!) ?? 0 : 0) % FACTION_COLORS.length];
+      out.push(
+        <g
+          key={ch.id}
+          style={{ cursor: "pointer" }}
+          onClick={() => {
+            if (suppressClickRef.current) return;
+            setSelectedId((v) => (v === ch.id ? null : ch.id));
+            setActiveFaction(null);
+          }}
+          onMouseEnter={(e) => {
+            setHoveredId(ch.id);
+            showTooltip(e, ch.name, `${toArabicDigits(ch.appearanceCount)} ظهور`);
+          }}
+          onMouseLeave={() => { setHoveredId(null); hideTooltip(); }}
+          opacity={dimmed ? 0.12 : 1}
+        >
+          <circle
+            cx={p.x} cy={p.y} r={1.35}
+            fill={`${nodeColor}26`}
+            stroke={nodeColor}
+            strokeWidth="0.12"
+          />
+          <text
+            x={p.x} y={p.y}
+            fill={nodeColor}
+            fontSize="1.25"
+            textAnchor="middle" dominantBaseline="central"
+            className="pointer-events-none font-naskh font-bold"
+          >
+            {ch.name.charAt(0)}
+          </text>
+        </g>
+      );
+    }
+    return out;
+  }, [characters, pos, hasFilter, filterIds, factionOf, factionIndex, showTooltip, hideTooltip]);
+
+  // ═══ dynamic "others": filtered / hovered / selected nodes drawn on top ═══
+  const dynamicOthers = useMemo(() => {
+    const out: CharNode[] = [];
+    for (const ch of characters) {
+      if (ch.isMain) continue;
+      if (filterIds?.has(ch.id) || hoveredId === ch.id || selectedId === ch.id) out.push(ch);
+    }
+    return out;
+  }, [characters, filterIds, hoveredId, selectedId]);
+
+  // ═══ PAN (drag) ═══
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    panRef.current = { sx: e.clientX, sy: e.clientY, bx: pan.x, by: pan.y, moved: false };
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!panRef.current) return;
+    const dx = e.clientX - panRef.current.sx;
+    const dy = e.clientY - panRef.current.sy;
+    if (!panRef.current.moved && Math.hypot(dx, dy) > 5) {
+      panRef.current.moved = true;
+      setGrabbing(true);
+      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    }
+    if (panRef.current.moved) setPan({ x: panRef.current.bx + dx, y: panRef.current.by + dy });
+  };
+  const onPointerUp = () => {
+    if (panRef.current?.moved) {
+      suppressClickRef.current = true;
+      setTimeout(() => { suppressClickRef.current = false; }, 0);
+    }
+    panRef.current = null;
+    setGrabbing(false);
+  };
+
+  const manyRelations = visibleRelations.length > 700;
+
   return (
-    <div ref={containerRef} className="gold-card relative overflow-hidden rounded-xl cosmic-bg" onMouseMove={(e) => moveTooltip(e.clientX, e.clientY)}>
+    <div
+      ref={containerRef}
+      className={"gold-card relative overflow-hidden rounded-xl cosmic-bg " + (grabbing ? "cursor-grabbing" : "")}
+      onMouseMove={(e) => moveTooltip(e.clientX, e.clientY)}
+    >
       <div className="starfield absolute inset-0" />
 
       {/* ═══ TOP BAR: search + stats ═══ */}
@@ -390,7 +494,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
         <button onClick={() => setZoom((z) => Math.max(z - 0.2, 0.5))} className="flex h-8 w-8 items-center justify-center rounded-md border border-gold/30 bg-black/60 text-gold/80 backdrop-blur-sm transition-colors hover:bg-gold/20 hover:text-gold" title="تصغير">
           <ZoomOut className="h-4 w-4" />
         </button>
-        <button onClick={() => setZoom(1)} className="flex h-8 w-8 items-center justify-center rounded-md border border-gold/30 bg-black/60 text-gold/80 backdrop-blur-sm transition-colors hover:bg-gold/20 hover:text-gold" title="إعادة ضبط">
+        <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="flex h-8 w-8 items-center justify-center rounded-md border border-gold/30 bg-black/60 text-gold/80 backdrop-blur-sm transition-colors hover:bg-gold/20 hover:text-gold" title="إعادة ضبط">
           <Maximize2 className="h-4 w-4" />
         </button>
       </div>
@@ -404,7 +508,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
               key={m.id}
               onClick={() => setActiveFaction(activeFaction === m.id ? null : m.id)}
               className="flex items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[9px] text-gold/60 transition-colors hover:bg-gold/10 hover:text-gold"
-              style={{ borderRight: `2px solid ${FACTION_COLORS[i % FACTION_COLORS.length]}${activeFaction === m.id ? "" : ""}` }}
+              style={{ borderRight: `2px solid ${FACTION_COLORS[i % FACTION_COLORS.length]}` }}
             >
               <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: FACTION_COLORS[i % FACTION_COLORS.length] }} />
               <span className="truncate">{m.name}</span>
@@ -498,7 +602,11 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
       {/* ═══ SVG GRAPH ═══ */}
       <div
         className="relative z-10 overflow-hidden rounded-b-xl"
-        style={{ transform: mounted ? `scale(${zoom})` : "scale(0.96)", transformOrigin: "center center", transition: "transform 0.3s ease" }}
+        style={{ transform: mounted ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : "scale(0.96)", transformOrigin: "center center", transition: grabbing ? "none" : "transform 0.3s ease" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
       >
         {!mounted ? (
           <div className="flex aspect-square w-full flex-col items-center justify-center gap-3" style={{ minHeight: "520px", maxHeight: "72vh" }}>
@@ -509,7 +617,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
             <p className="font-naskh text-sm text-gold/50">جارٍ رسم مجرة الشخصيات…</p>
           </div>
         ) : (
-        <svg viewBox="0 0 100 100" className="aspect-square w-full" style={{ minHeight: "520px", maxHeight: "72vh" }}>
+        <svg viewBox="0 0 100 100" className={"aspect-square w-full " + (grabbing ? "cursor-grabbing" : "cursor-grab")} style={{ minHeight: "520px", maxHeight: "72vh" }}>
           <defs>
             <radialGradient id={coreId} cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#ffd76e" stopOpacity="0.55" />
@@ -532,7 +640,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
           <circle cx="50" cy="50" r="30" fill={`url(#${coreId})`} />
 
           {/* Faction wedges — mandala sectors behind each main */}
-          {factionLeaders.mains.map((m, i) => {
+          {factionLeaders.mains.map((m) => {
             const p = pos.get(m.id);
             if (!p) return null;
             const angle = Math.atan2(p.y - 50, p.x - 50);
@@ -543,7 +651,6 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
             return (
               <g key={m.id} style={{ cursor: "pointer" }} onClick={() => setActiveFaction(isActive ? null : m.id)}
                 onMouseEnter={(e) => showTooltip(e, `عائلة ${m.name}`, `${toArabicDigits(factionCounts.get(m.id) || 0)} شخصية تتبعها`)}
-                
                 onMouseLeave={hideTooltip}>
                 <path
                   d={`M50,50 L${50 + 49 * Math.cos(angle - half)},${50 + 49 * Math.sin(angle - half)} A49,49 0 0,0 ${50 + 49 * Math.cos(angle + half)},${50 + 49 * Math.sin(angle + half)} Z`}
@@ -571,16 +678,16 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
             const dimmed = hasFilter && !isActive;
             return (
               <g key={rel.id}>
-                <path d={curvePath(fromPos.x, fromPos.y, toPos.x, toPos.y)} fill="none" stroke="transparent" strokeWidth="1.6" style={{ cursor: "pointer" }}
-                  onMouseEnter={(e) => relHover(rel, e, true)}
-                  
-                  onMouseLeave={(e) => relHover(rel, e, false)} />
+                {!manyRelations && (
+                  <path d={curvePath(fromPos.x, fromPos.y, toPos.x, toPos.y)} fill="none" stroke="transparent" strokeWidth="1.6" style={{ cursor: "pointer" }}
+                    onMouseEnter={(e) => relHover(rel, e, true)}
+                    onMouseLeave={(e) => relHover(rel, e, false)} />
+                )}
                 <path d={curvePath(fromPos.x, fromPos.y, toPos.x, toPos.y)} fill="none" stroke={style.color}
                   strokeWidth={isHovered ? "0.28" : isActive ? "0.2" : "0.12"}
                   opacity={dimmed ? 0.04 : isHovered ? 1 : isActive ? 0.85 : 0.4}
                   strokeDasharray={style.color === "#ef4444" ? "0.5,0.3" : "none"}
-                  filter={isHovered || isActive ? `url(#${glowId})` : undefined}
-                  style={{ transition: "all 0.3s ease" }} />
+                  filter={isHovered || isActive ? `url(#${glowId})` : undefined} />
                 {(isHovered || (isActive && hasFilter)) && (
                   <text x={(fromPos.x + toPos.x) / 2} y={(fromPos.y + toPos.y) / 2}
                     fill={style.color} fontSize="1.6" textAnchor="middle" dy="-0.6"
@@ -592,78 +699,123 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
             );
           })}
 
-          {/* CHARACTER NODES */}
+          {/* STATIC character nodes (memoized — stable across hover) */}
+          {staticOthers}
+
+          {/* MAIN RING NODES */}
           {characters.map((ch) => {
+            if (!ch.isMain) return null;
             const p = pos.get(ch.id);
             if (!p) return null;
             const isProtag = protagonist?.id === ch.id;
-            const leaderIdx = ch.isMain ? (factionIndex.get(ch.id) ?? 0) : (factionOf.has(ch.id) ? factionIndex.get(factionOf.get(ch.id)!) ?? 0 : 0);
-            const factionColor = FACTION_COLORS[leaderIdx % FACTION_COLORS.length];
-            const nodeColor = ch.color || (ch.isMain ? "#d4a843" : factionColor);
+            const leaderIdx = ch.isMain ? (factionIndex.get(ch.id) ?? 0) : 0;
+            const nodeColor = ch.color || (ch.isMain ? "#d4a843" : FACTION_COLORS[leaderIdx % FACTION_COLORS.length]);
             const isSelected = selectedId === ch.id;
-            const isActiveNode = hasFilter ? (activeIds as Set<number>).has(ch.id) : true;
+            const isActiveNode = hasFilter ? (filterIds as Set<number>).has(ch.id) : true;
             const dimmed = hasFilter && !isActiveNode && !isSelected;
 
-            // size
-            const rMain = 2.6, rProtag = 4.2, rOther = 1.35;
-            const r = isProtag ? rProtag : ch.isMain ? rMain : rOther;
+            const rMain = 2.6, rProtag = 4.2;
+            const r = isProtag ? rProtag : rMain;
 
             return (
-              <g key={ch.id} style={{ cursor: "pointer", transition: "opacity 0.3s ease" }}
+              <g key={ch.id} style={{ cursor: "pointer" }}
                 onClick={() => {
+                  if (suppressClickRef.current) return;
                   setSelectedId(isSelected ? null : ch.id);
                   setActiveFaction(null);
                 }}
                 onMouseEnter={(e) => {
-                  if (!selectedId) setHoveredId(ch.id);
+                  setHoveredId(ch.id);
                   showTooltip(e, ch.name, `${toArabicDigits(ch.appearanceCount)} ظهور` + (ch.isMain && !isProtag ? ` · قائد عائلة` : "") + (isProtag ? " · البطل" : ""));
                 }}
-                
-                onMouseLeave={() => { if (!selectedId) setHoveredId(null); hideTooltip(); }}
+                onMouseLeave={() => { setHoveredId(null); hideTooltip(); }}
                 opacity={dimmed ? 0.12 : 1}>
-                {/* Protagonist aura */}
+                {/* Protagonist aura (static — no continuous animation) */}
                 {isProtag && (
-                  <circle cx={p.x} cy={p.y} r={6.2} fill="none" stroke="#ffd76e" strokeWidth="0.12" opacity="0.5">
-                    <animate attributeName="r" values="5.6;6.6;5.6" dur="3s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0.5;0.25;0.5" dur="3s" repeatCount="indefinite" />
-                  </circle>
+                  <circle cx={p.x} cy={p.y} r={6.2} fill="none" stroke="#ffd76e" strokeWidth="0.12" opacity="0.5" />
                 )}
-                {/* Hover / selected glow */}
+                {/* Hover / selected glow (static ring) */}
                 {(isSelected || hoveredId === ch.id) && (
-                  <circle cx={p.x} cy={p.y} r={r + 1.4} fill="none" stroke="#ffd76e" strokeWidth="0.12" opacity="0.5">
-                    <animate attributeName="r" values={`${r + 1.2};${r + 2};${r + 1.2}`} dur="1.6s" repeatCount="indefinite" />
-                  </circle>
+                  <circle cx={p.x} cy={p.y} r={r + 1.6} fill="none" stroke="#ffd76e" strokeWidth="0.12" opacity="0.6" />
                 )}
 
                 {/* Node disc */}
                 <circle cx={p.x} cy={p.y} r={r}
-                  fill={isProtag ? "#241604" : ch.isMain ? "#1c1206" : `${nodeColor}26`}
-                  stroke={isSelected ? "#ffd700" : isProtag ? "#ffd76e" : ch.isMain ? "#d4a843" : nodeColor}
-                  strokeWidth={isSelected ? "0.28" : isProtag ? "0.22" : ch.isMain ? "0.2" : "0.12"}
-                  filter={isSelected ? `url(#${glowId})` : undefined}
-                  style={{ transition: "all 0.25s ease" }} />
+                  fill={isProtag ? "#241604" : "#1c1206"}
+                  stroke={isSelected ? "#ffd700" : isProtag ? "#ffd76e" : "#d4a843"}
+                  strokeWidth={isSelected ? "0.28" : isProtag ? "0.22" : "0.2"}
+                  filter={isSelected ? `url(#${glowId})` : undefined} />
 
                 {/* Faction-colored rim for main ring */}
-                {ch.isMain && !isProtag && (
+                {!isProtag && (
                   <circle cx={p.x} cy={p.y} r={r * 0.55} fill="none" stroke={nodeColor} strokeWidth="0.08" opacity="0.7" />
                 )}
 
                 {/* Letter */}
                 <text x={p.x} y={p.y}
                   fill={isProtag ? "#ffd76e" : nodeColor}
-                  fontSize={isProtag ? 3.4 : ch.isMain ? 2.3 : 1.25}
+                  fontSize={isProtag ? 3.4 : 2.3}
                   textAnchor="middle" dominantBaseline="central"
                   className="pointer-events-none font-naskh font-bold">
                   {ch.name.charAt(0)}
                 </text>
 
-                {/* Labels — mains + protagonist always, others only when interacting */}
-                {(ch.isMain || isSelected || hoveredId === ch.id) && (
-                  <g className="pointer-events-none" style={{ transition: "opacity 0.2s" }}>
-                    <rect x={p.x - 5} y={p.y + r + 0.3} width="10" height={isProtag ? 2.4 : 2.1} rx="1.1" fill="rgba(0,0,0,0.66)" />
-                    <text x={p.x} y={p.y + r + 1.7}
-                      fill={isSelected ? "#ffd700" : isProtag ? "#ffd76e" : ch.isMain ? "#d4a843" : "#c9a84c"}
-                      fontSize={isProtag ? 2.1 : ch.isMain ? 1.6 : 1.3}
+                {/* Labels — mains always, bigger for protagonist */}
+                <g className="pointer-events-none" style={{ transition: "opacity 0.2s" }}>
+                  <rect x={p.x - 5} y={p.y + r + 0.3} width="10" height={isProtag ? 2.4 : 2.1} rx="1.1" fill="rgba(0,0,0,0.66)" />
+                  <text x={p.x} y={p.y + r + 1.7}
+                    fill={isSelected ? "#ffd700" : isProtag ? "#ffd76e" : "#d4a843"}
+                    fontSize={isProtag ? 2.1 : 1.6}
+                    textAnchor="middle"
+                    className="font-naskh font-bold"
+                    style={{ filter: "drop-shadow(0 0 1.5px black)" }}>
+                    {ch.name.length > 16 ? ch.name.slice(0, 16) + "…" : ch.name}
+                  </text>
+                </g>
+              </g>
+            );
+          })}
+
+          {/* DYNAMIC "others" overlay: filtered / hovered / selected nodes */}
+          {dynamicOthers.map((ch) => {
+            const p = pos.get(ch.id);
+            if (!p) return null;
+            const isSelected = selectedId === ch.id;
+            const isHovered = hoveredId === ch.id;
+            const nodeColor = ch.color || FACTION_COLORS[(factionOf.get(ch.id) != null ? factionIndex.get(factionOf.get(ch.id)!) ?? 0 : 0) % FACTION_COLORS.length];
+            return (
+              <g key={`ov-${ch.id}`} style={{ cursor: "pointer" }}
+                onClick={() => {
+                  if (suppressClickRef.current) return;
+                  setSelectedId(isSelected ? null : ch.id);
+                  setActiveFaction(null);
+                }}
+                onMouseEnter={(e) => {
+                  setHoveredId(ch.id);
+                  showTooltip(e, ch.name, `${toArabicDigits(ch.appearanceCount)} ظهور`);
+                }}
+                onMouseLeave={() => { setHoveredId(null); hideTooltip(); }}>
+                {(isSelected || isHovered) && (
+                  <circle cx={p.x} cy={p.y} r={1.35 + 1.4} fill="none" stroke="#ffd76e" strokeWidth="0.12" opacity="0.6" />
+                )}
+                <circle cx={p.x} cy={p.y} r={1.35}
+                  fill={`${nodeColor}33`}
+                  stroke={isSelected ? "#ffd700" : nodeColor}
+                  strokeWidth={isSelected ? "0.28" : "0.14"}
+                  filter={isSelected ? `url(#${glowId})` : undefined} />
+                <text x={p.x} y={p.y}
+                  fill={nodeColor}
+                  fontSize="1.25"
+                  textAnchor="middle" dominantBaseline="central"
+                  className="pointer-events-none font-naskh font-bold">
+                  {ch.name.charAt(0)}
+                </text>
+                {(isSelected || isHovered) && (
+                  <g className="pointer-events-none">
+                    <rect x={p.x - 5} y={p.y + 1.65} width="10" height="2.1" rx="1.1" fill="rgba(0,0,0,0.75)" />
+                    <text x={p.x} y={p.y + 3.05}
+                      fill={isSelected ? "#ffd700" : "#c9a84c"}
+                      fontSize="1.3"
                       textAnchor="middle"
                       className="font-naskh font-bold"
                       style={{ filter: "drop-shadow(0 0 1.5px black)" }}>

@@ -718,3 +718,24 @@ Work Log:
 - Discovered sub-agent spawns are blocked account-wide (concurrency + quota) — manual extraction is the only path; also confirmed _quest/ is gitignored by design (2414 text files) so batch JSONs live on disk only, DB is the deliverable.
 - Mojibake red herring: some persisted-output previews show double-encoded Arabic but node byte-comparison proved files/DB are correct UTF-8 (display artifact only). Re-dumped ch_2100.txt.
 - Pending: batches 107-121 (15 left, ch 2110-2402).
+
+---
+Task ID: 17c
+Agent: main (opencode session, mimo)
+Task: BIG QUEST continuation — finish ALL 121 extraction batches, re-run full pipeline with fixes, repair network graph performance/layout, fix world map coordinates, pass lint/build.
+
+Work Log:
+- **Batches 94-121 completed**: sub-agent extraction resumed successfully this session (quota recovered). Waves of 4 agents; failures (DNS/rate-limit/empty replies) retried individually. Batch 119 failed 4x as a whole → split into 119a/119b (10 chapters each), both succeeded, merged (91 entities, 46 relations).
+- Fallback script `_quest/generate_remaining_batches.mjs` produced heuristic output for 111-121 during a quota outage; every one of those files was subsequently REPLACED by sub-agent extraction (heuristic relations were 10-100x too noisy). All 121/121 batch files verified: 0 parse errors, entity counts in agent-quality range.
+- **Full pipeline re-run**: merge_batches (7,208 raw → 1,926 canonical: 682 person / 245 creature / 447 faction / 457 place / 39 army / 56 group) → count_mentions (110,873 real occurrences across 2,414 chapters, 1,525 matched) → apply_to_db (756 chars updated, 191 locations, 90,427 paragraph-level ChapterCharacter rows).
+- **CRITICAL apply_to_db fix**: multiple canonicals resolve to the SAME row via aliases (e.g. "روبين" 23,513 vs "روبين بورتون" 272) — last-write-wins had corrupted mentionCount (robin showed 272). Now accumulates per-row (max mentions / max chapters / min first-appearance) before updating. Also final SQL chapterCount was counting paragraph rows (21,962) → COUNT(DISTINCT chapterId) (2,042). Verified top-8: روبين 23,513 / قيصر 3,454 / جابا 2,630 / ريتشارد 2,306 / كاربان 2,140 / ساكار 1,798 / ثيو 1,656 / هيدريك 1,534 — all match count_mentions output.
+- **Relations rebuilt from all 121 batches**: backup → clear 2,040 stale rows → apply_relations: 2,994 collected → 2,413 written (581 dropped: faction/place endpoint not in Character table — schema only has CharacterRelation).
+- **Network graph rewritten** (character-network-graph.tsx): server-side faction assignment (`src/lib/factions.ts`, cached by row count) because the page passed `chapters: []` → ALL 788 nodes were dumped on one overlapping drifter ring. Fixes: factionId prop + co-occurrence fallback; single-ring drifters with graceful gap shrink; static memoized "others" group (stable element identity across hover → React skips re-diff of ~760 nodes); hover no longer re-dims the whole graph (filter = select/faction/search only); continuous SMIL animations removed (static aura/glow rings); drag-to-pan added (pointer capture + click suppression) alongside zoom buttons; relation hit-path culling above 700 lines; CSS transitions on relation paths removed.
+- **World map fixed** (world-map-interactive.tsx + `_quest/layout_locations.mjs`): 24 locations were stacked at (50,50), 45+ collided on y=92 rows, and ~15 were at posY 133-264 → rendered OUTSIDE the viewBox (invisible). Re-laid ALL 249 locations on a golden-angle (phyllotaxis) spiral ordered by startChapter, radius 44, 0.1 precision — deterministic, in-bounds, ~5% min spacing. Label soup fixed: permanent name/chapter badges only for top-40 by mentionCount; hover/selection always shows a label; path arrows only on active path.
+- **Lint**: 8 errors fixed (3 mine: useCallback use-before-declare + ref-read-during-render in graph; 5 legacy no-require-imports in scripts/*.js → one-line eslint-disable headers). Now 0 errors / 21 pre-existing warnings. `next build` passes (16.2.12, all routes). tsc 0.
+- API checks: /api/stats 2,414 chapters / 2,153,748 words; /api/characters 788 rows with mentionCount/kind/firstChapter.
+
+Stage Summary:
+- Data: 121/121 batches extracted; 1,926 canonical entities; 110,873 mentions; 788 chars + 249 locations in DB; 90,427 appearance rows; 2,413 relations; 117 char images; map coordinates deterministic.
+- UI: characters page sorted/filtered by real counts; network graph faction-correct, memoized, pannable; world map fully visible + decluttered.
+- Pending: browser visual QA (Browser MCP extension needs user to connect); 62 chars with >=100 mentions have no image in the Discord manifest; possible person/faction kind mislabels from extraction (e.g. هيدريك=faction); commit after QA.

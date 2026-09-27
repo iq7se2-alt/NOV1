@@ -15,6 +15,7 @@ type Location = {
   posY: number;
   startChapter: number;
   endChapter: number | null;
+  mentionCount?: number;
 };
 
 type Props = {
@@ -65,6 +66,16 @@ export function WorldMapInteractive({ locations }: Props) {
     () => [...locations].sort((a, b) => a.startChapter - b.startChapter),
     [locations]
   );
+
+  // Only the most important locations keep permanent labels — 249 name
+  // badges stacked at once would be unreadable soup. Hover/selection always
+  // shows a label regardless of this set.
+  const labelIds = useMemo(() => {
+    const top = [...locations]
+      .sort((a, b) => (b.mentionCount || 0) - (a.mentionCount || 0))
+      .slice(0, 40);
+    return new Set(top.map((l) => l.id));
+  }, [locations]);
 
   const resetFilter = () => {
     setSelectedId(null);
@@ -242,18 +253,19 @@ export function WorldMapInteractive({ locations }: Props) {
                     />
                   </circle>
                 )}
-                {/* Arrow direction indicator at midpoint */}
-                <text
-                  x={`${((loc.posX + next.posX) / 2) + (dy / (dist || 1)) * 1.5}%`}
-                  y={`${((loc.posY + next.posY) / 2) - (dx / (dist || 1)) * 1.5}%`}
-                  fill={isActive ? "#d4a843" : "rgba(212,168,67,0.2)"}
-                  fontSize="1.5"
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  opacity={dimmed ? 0.1 : 0.5}
-                >
-                  →
-                </text>
+                {/* Arrow direction indicator at midpoint — only for active path */}
+                {isActive && (
+                  <text
+                    x={`${((loc.posX + next.posX) / 2) + (dy / (dist || 1)) * 1.5}%`}
+                    y={`${((loc.posY + next.posY) / 2) - (dx / (dist || 1)) * 1.5}%`}
+                    fill="#d4a843"
+                    fontSize="1.5"
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                  >
+                    →
+                  </text>
+                )}
               </g>
             );
           })}
@@ -415,58 +427,62 @@ export function WorldMapInteractive({ locations }: Props) {
                 );
                 })()}
 
-                {/* Name label */}
-                <rect
-                  x={`${loc.posX - 5}%`}
-                  y={`${loc.posY + 2.5}%`}
-                  width="10%"
-                  height="3%"
-                  rx="0.8"
-                  fill="rgba(0,0,0,0.7)"
-                  opacity={dimmed ? 0 : isSelected || isHovered ? 0.95 : 0.7}
-                  style={{ transition: "opacity 0.3s" }}
-                />
-                <text
-                  x={`${loc.posX}%`}
-                  y={`${loc.posY + 4.2}%`}
-                  fill={
-                    isSelected
-                      ? "#ffd700"
-                      : isHovered
-                        ? "#d4a843"
-                        : "#c9a84c"
-                  }
-                  fontSize="1.8"
-                  textAnchor="middle"
-                  className="pointer-events-none font-naskh font-bold"
-                  opacity={dimmed ? 0.1 : 1}
-                  style={{ transition: "opacity 0.3s" }}
-                >
-                  {loc.name}
-                </text>
+                {/* Name label — only for important / hovered / selected */}
+                {(isSelected || isHovered || labelIds.has(loc.id)) && (
+                  <>
+                    <rect
+                      x={`${loc.posX - 5}%`}
+                      y={`${loc.posY + 2.5}%`}
+                      width="10%"
+                      height="3%"
+                      rx="0.8"
+                      fill="rgba(0,0,0,0.7)"
+                      opacity={dimmed ? 0 : isSelected || isHovered ? 0.95 : 0.7}
+                      style={{ transition: "opacity 0.3s" }}
+                    />
+                    <text
+                      x={`${loc.posX}%`}
+                      y={`${loc.posY + 4.2}%`}
+                      fill={
+                        isSelected
+                          ? "#ffd700"
+                          : isHovered
+                            ? "#d4a843"
+                            : "#c9a84c"
+                      }
+                      fontSize="1.8"
+                      textAnchor="middle"
+                      className="pointer-events-none font-naskh font-bold"
+                      opacity={dimmed ? 0.1 : 1}
+                      style={{ transition: "opacity 0.3s" }}
+                    >
+                      {loc.name}
+                    </text>
 
-                {/* Chapter badge */}
-                <rect
-                  x={`${loc.posX - 2.5}%`}
-                  y={`${loc.posY + 5.5}%`}
-                  width="5%"
-                  height="2%"
-                  rx="0.5"
-                  fill="rgba(212,168,67,0.2)"
-                  opacity={dimmed ? 0 : isSelected || isHovered ? 1 : 0.6}
-                  style={{ transition: "opacity 0.3s" }}
-                />
-                <text
-                  x={`${loc.posX}%`}
-                  y={`${loc.posY + 6.8}%`}
-                  fill="#d4a843"
-                  fontSize="1.3"
-                  textAnchor="middle"
-                  className="pointer-events-none"
-                  opacity={dimmed ? 0.1 : 0.8}
-                >
-                  ف{loc.startChapter}
-                </text>
+                    {/* Chapter badge */}
+                    <rect
+                      x={`${loc.posX - 2.5}%`}
+                      y={`${loc.posY + 5.5}%`}
+                      width="5%"
+                      height="2%"
+                      rx="0.5"
+                      fill="rgba(212,168,67,0.2)"
+                      opacity={dimmed ? 0 : isSelected || isHovered ? 1 : 0.6}
+                      style={{ transition: "opacity 0.3s" }}
+                    />
+                    <text
+                      x={`${loc.posX}%`}
+                      y={`${loc.posY + 6.8}%`}
+                      fill="#d4a843"
+                      fontSize="1.3"
+                      textAnchor="middle"
+                      className="pointer-events-none"
+                      opacity={dimmed ? 0.1 : 0.8}
+                    >
+                      ف{loc.startChapter}
+                    </text>
+                  </>
+                )}
               </g>
             );
           })}

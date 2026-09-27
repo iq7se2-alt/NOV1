@@ -43,9 +43,11 @@ type ViewMode = "grid" | "network";
 export function CharactersNetworkView({
   characters,
   relations,
+  factions,
 }: {
   characters: Character[];
   relations: Relation[];
+  factions: Map<number, number>;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>("network");
 
@@ -96,6 +98,7 @@ export function CharactersNetworkView({
             appearanceCount: c.appearanceCount,
             mentionCount: c.mentionCount || 0,
             chapters: [],
+            factionId: c.isMain ? c.id : (factions.get(c.id) ?? null),
           }))}
           relations={relations.map((r) => ({
             id: r.id,

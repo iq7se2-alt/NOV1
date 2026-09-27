@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { Users } from "lucide-react";
 import { toArabicDigits } from "@/lib/format";
 import { CharactersNetworkView } from "@/components/site/characters-network-view";
+import { getFactionMap } from "@/lib/factions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export const metadata = {
 export default async function CharactersPage() {
   // Light query: characters + relations only. Appearance chapters load
   // on demand via /api/characters/[id]/appearances when a card opens.
-  const [characters, relations] = await Promise.all([
+  const [characters, relations, factions] = await Promise.all([
     db.character.findMany({
       orderBy: [{ mentionCount: "desc" }, { isMain: "desc" }, { name: "asc" }],
       select: {
@@ -41,6 +42,7 @@ export default async function CharactersPage() {
         to: { select: { name: true } },
       },
     }),
+    getFactionMap(),
   ]);
 
   // Show ALL characters sorted by real mention count
@@ -90,6 +92,7 @@ export default async function CharactersPage() {
             chapters: [],
             chapterParas: {},
           }))}
+          factions={factions}
           relations={relations.map((r) => ({
             id: r.id,
             fromId: r.fromId,
