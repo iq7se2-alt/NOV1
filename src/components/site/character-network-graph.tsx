@@ -1,203 +1,23 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useId, useEffect } from "react";
-import { ZoomIn, ZoomOut, Maximize2, Search, X, Users, GitFork } from "lucide-react";
 import { toArabicDigits } from "@/lib/format";
-
-type CharNode = {
-  id: number;
-  name: string;
-  imageUrl: string | null;
-  description: string | null;
-  isMain: boolean;
-  color: string | null;
-  appearanceCount: number;
-  mentionCount?: number;
-  chapters: number[];
-  factionId?: number | null;
-};
-
-type RelationEdge = {
-  id: number;
-  fromId: number;
-  toId: number;
-  type: string;
-  description: string | null;
-};
+import { FACTION_COLORS, REL_STYLES, getRelStyle } from "./network/constants";
+import { computeLayout } from "./network/layout";
+import {
+  NetworkTopBar,
+  NetworkZoomControls,
+  NetworkLegend,
+  NetworkSelectedPanel,
+  NetworkFactionPanel,
+  NetworkTooltip,
+} from "./network/panels";
+import type { CharNode, RelationEdge } from "./network/types";
 
 type Props = {
   characters: CharNode[];
   relations: RelationEdge[];
 };
-
-const REL_STYLES: Record<string, { color: string; label: string }> = {
-  أب: { color: "#d4b05e", label: "أب" },
-  أم: { color: "#e3c878", label: "أم" },
-  صديق: { color: "#22c55e", label: "صديق" },
-  عدو: { color: "#ef4444", label: "عدو" },
-  معلم: { color: "#3b82f6", label: "معلم" },
-  تلميذ: { color: "#60a5fa", label: "تلميذ" },
-  عائلة: { color: "#fbbf24", label: "عائلة" },
-  حليف: { color: "#a78bfa", label: "حليف" },
-  زوج: { color: "#ec4899", label: "زوج" },
-  زوجة: { color: "#ec4899", label: "زوجة" },
-  أخ: { color: "#06b6d4", label: "أخ" },
-  أخت: { color: "#06b6d4", label: "أخت" },
-  ابن: { color: "#f59e0b", label: "ابن" },
-  ابنة: { color: "#f59e0b", label: "ابنة" },
-  تابع: { color: "#8b5cf6", label: "تابع" },
-  سيده: { color: "#dc2626", label: "سيده" },
-};
-
-// Rich faction palette (gold-themed story → warm jewel tones)
-const FACTION_COLORS = [
-  "#d4b05e", "#e3c878", "#c96f4a", "#8b5cf6", "#22c55e", "#38bdf8",
-  "#f472b6", "#a3e635", "#fb7185", "#34d399", "#a78bfa", "#fbbf24",
-  "#2dd4bf", "#60a5fa", "#f97316", "#4ade80", "#e879f9", "#facc15",
-  "#7dd3fc", "#fdba74", "#c084fc", "#86efac", "#fda4af", "#94a3b8",
-  "#fcd34d", "#5eead4",
-];
-
-function getRelStyle(type: string) {
-  return REL_STYLES[type] || { color: "#888", label: type };
-}
-
-type Layout = {
-  pos: Map<number, { x: number; y: number }>;
-  factionOf: Map<number, number>; // charId → faction leader id
-  protagonist: CharNode | null;
-};
-
-/**
- * Solar-system layout:
- *  - Protagonist (most appearances) sits at the golden core.
- *  - The other main characters form a ring around the core.
- *  - Every other character goes to the faction of its `factionId`
- *    (precomputed server-side from real chapter co-occurrence), falling
- *    back to client-side co-occurrence when chapters are provided.
- *  - Sectors are drawn as concentric "nightingale" rings so everything fits
- *    inside the canvas regardless of how skewed the house sizes are.
- *  - Characters with no faction land on an outer "drifter" ring.
- */
-function computeLayout(chars: CharNode[]): Layout {
-  const pos = new Map<number, { x: number; y: number }>();
-  const factionOf = new Map<number, number>();
-  const cx = 50, cy = 50;
-
-  const mains = chars.filter((c) => c.isMain).sort((a, b) => b.appearanceCount - a.appearanceCount);
-  const others = chars.filter((c) => !c.isMain);
-  const protagonist = mains[0] || null;
-  const ringMains = protagonist ? mains.slice(1) : mains;
-
-  // Core + main ring
-  if (protagonist) pos.set(protagonist.id, { x: cx, y: cy });
-  const R_MAIN = 20.5;
-  ringMains.forEach((m, i) => {
-    const angle = -Math.PI / 2 + (i / Math.max(ringMains.length, 1)) * 2 * Math.PI;
-    pos.set(m.id, { x: cx + R_MAIN * Math.cos(angle), y: cy + R_MAIN * Math.sin(angle) });
-  });
-
-  const mainIds = new Set(mains.map((m) => m.id));
-  const hasChapters = chars.some((c) => c.chapters.length > 0);
-  const mainChapters = new Map<number, Set<number>>();
-  if (hasChapters) for (const m of mains) mainChapters.set(m.id, new Set(m.chapters));
-
-  const groups = new Map<number | null, CharNode[]>();
-  for (const o of others) {
-    let best: number | null = null;
-    let bestScore = 0;
-    // Server-precomputed faction wins when it points at a visible main.
-    if (o.factionId != null && mainIds.has(o.factionId)) {
-      best = o.factionId;
-      bestScore = 1;
-    } else if (hasChapters) {
-      for (const m of mains) {
-        if (m.id === o.id) continue;
-        const set = mainChapters.get(m.id);
-        let score = 0;
-        for (const ch of o.chapters) if (set?.has(ch)) score++;
-        if (score > bestScore) { bestScore = score; best = m.id; }
-      }
-    }
-    const key = bestScore > 0 ? best : null;
-    if (key !== null) factionOf.set(o.id, key);
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(o);
-  }
-
-  const MIN_GAP = 3.0;
-  const R_IN = 25.0;
-  const R_OUT = 47.5;
-  const drifters = groups.get(null) || [];
-  const factions: { leaderId: number; list: CharNode[] }[] = [...groups.entries()]
-    .filter(([k]) => k !== null)
-    .map(([leaderId, list]) => ({ leaderId: leaderId as number, list: [...list].sort((a, b) => b.appearanceCount - a.appearanceCount) }));
-
-  const leaderAngle = (id: number) => {
-    if (protagonist && id === protagonist.id) return -Math.PI / 2;
-    const p = pos.get(id);
-    return p ? Math.atan2(p.y - cy, p.x - cx) : 0;
-  };
-
-  // Order factions by leader angle → contiguous arcs around the circle
-  const ordered = [...factions].sort((a, b) => leaderAngle(a.leaderId) - leaderAngle(b.leaderId));
-  const queues = new Map<number, CharNode[]>(ordered.map((f) => [f.leaderId, [...f.list]]));
-  const remaining = ordered.map((f) => f.list.length);
-
-  const allocateSlots = (weights: number[], total: number, C: number) => {
-    const slots = weights.map((w) => Math.floor((w / total) * C));
-    for (let i = 0; i < weights.length; i++) if (weights[i] > 0 && slots[i] === 0) slots[i] = 1;
-    let used = slots.reduce((a, b) => a + b, 0);
-    const rem = C - used;
-    if (rem > 0) {
-      const idx = weights
-        .map((w, i) => ({ i, r: (w / total) * C - Math.floor((w / total) * C) }))
-        .sort((a, b) => b.r - a.r);
-      for (let k = 0; k < rem && k < idx.length; k++) slots[idx[k].i]++;
-    } else if (rem < 0) {
-      let rr = -rem;
-      const idx = weights.map((w, i) => ({ i, w })).filter((x, i) => weights[i] > 0).sort((a, b) => a.w - b.w);
-      for (const { i } of idx) { if (rr <= 0) break; if (slots[i] > 0) { slots[i]--; rr--; } }
-    }
-    return slots;
-  };
-
-  let r = R_IN;
-  while (true) {
-    const total = remaining.reduce((a, b) => a + b, 0);
-    if (total <= 0) break;
-    const C = Math.max(ordered.length, Math.floor((2 * Math.PI * r) / MIN_GAP));
-    const slots = allocateSlots(remaining, total, C);
-    let cum = -Math.PI / 2;
-    for (let i = 0; i < ordered.length; i++) {
-      const f = ordered[i];
-      const queue = queues.get(f.leaderId)!;
-      const cnt = Math.min(slots[i], queue.length);
-      const arc = (slots[i] / C) * 2 * Math.PI;
-      for (let k = 0; k < cnt; k++) {
-        const a = cum + ((k + 1) * arc) / (cnt + 1);
-        pos.set(queue.shift()!.id, { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
-      }
-      remaining[i] -= cnt;
-      cum += arc;
-    }
-    r += MIN_GAP;
-    if (r > R_OUT + 2) break;
-  }
-
-  // Drifters — single outer ring, gap shrinks gracefully when crowded
-  if (drifters.length > 0) {
-    const R = 47.5;
-    const gap = Math.min(MIN_GAP, (2 * Math.PI * R) / Math.max(drifters.length, 1));
-    let k = 0;
-    for (let a = -Math.PI / 2; k < drifters.length; a += gap / R) {
-      pos.set(drifters[k].id, { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) });
-      k++;
-    }
-  }
-
-  return { pos, factionOf, protagonist };
-}
 
 export function CharacterNetworkGraph({ characters, relations }: Props) {
   const uid = useId();
@@ -213,6 +33,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [showRelations, setShowRelations] = useState(false);
+  const [nodeLimit, setNodeLimit] = useState(200);
   const [mounted, setMounted] = useState(false);
   const [tooltip, setTooltip] = useState<{ text: string; sub?: string } | null>(null);
   const tooltipElRef = useRef<HTMLDivElement>(null);
@@ -226,27 +47,6 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
     return () => clearTimeout(t);
   }, []);
 
-  const { pos, factionOf, protagonist } = useMemo(() => computeLayout(characters), [characters]);
-
-  // faction leader id → its followers (for legend + click highlight)
-  const factionLeaders = useMemo(() => {
-    const mains = characters.filter((c) => c.isMain);
-    const map = new Map<number, CharNode[]>();
-    for (const c of characters) {
-      const leader = factionOf.get(c.id);
-      if (leader === undefined) continue;
-      if (!map.has(leader)) map.set(leader, []);
-      map.get(leader)!.push(c);
-    }
-    return { mains, map };
-  }, [characters, factionOf]);
-
-  const factionIndex = useMemo(() => {
-    const idx = new Map<number, number>();
-    factionLeaders.mains.forEach((m, i) => idx.set(m.id, i));
-    return idx;
-  }, [factionLeaders.mains]);
-
   const q = query.trim().toLowerCase();
   const matchesQuery = useCallback(
     (name: string) => {
@@ -255,6 +55,44 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
     },
     [q]
   );
+
+  // ═══ PROGRESSIVE RENDERING ═══
+  // 788 nodes in one SVG is a lot of DOM to mount at once. Draw the most
+  // mentioned first (the page already sorts by mentionCount desc) and let the
+  // user reveal more. Searching always searches the FULL list, so a match is
+  // never hidden behind the "more" button.
+  // All isMain characters are always included so every family keeps its leader.
+  const renderedChars = useMemo(() => {
+    if (q) return characters.filter((c) => matchesQuery(c.name));
+    if (characters.length <= nodeLimit) return characters;
+    const head = characters.slice(0, nodeLimit);
+    const shownIds = new Set(head.map((c) => c.id));
+    const missingMains = characters.filter((c) => c.isMain && !shownIds.has(c.id));
+    return missingMains.length > 0 ? [...head, ...missingMains] : head;
+  }, [characters, nodeLimit, q, matchesQuery]);
+
+  const hiddenCount = characters.length - renderedChars.length;
+
+  const { pos, factionOf, protagonist } = useMemo(() => computeLayout(renderedChars), [renderedChars]);
+
+  // faction leader id → its followers (for legend + click highlight)
+  const factionLeaders = useMemo(() => {
+    const mains = renderedChars.filter((c) => c.isMain);
+    const map = new Map<number, CharNode[]>();
+    for (const c of renderedChars) {
+      const leader = factionOf.get(c.id);
+      if (leader === undefined) continue;
+      if (!map.has(leader)) map.set(leader, []);
+      map.get(leader)!.push(c);
+    }
+    return { mains, map };
+  }, [renderedChars, factionOf]);
+
+  const factionIndex = useMemo(() => {
+    const idx = new Map<number, number>();
+    factionLeaders.mains.forEach((m, i) => idx.set(m.id, i));
+    return idx;
+  }, [factionLeaders.mains]);
 
   // Tooltip coordinates are updated via direct DOM style (ref) — never via
   // setState — so following the cursor does not re-render the whole SVG graph.
@@ -353,13 +191,24 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
     return m;
   }, [factionLeaders]);
 
+  // relation types actually present in the data (legend key)
+  const presentRelTypes = useMemo(() => {
+    const seen = new Set<string>();
+    for (const r of relations) if (REL_STYLES[r.type]) seen.add(r.type);
+    return [...seen];
+  }, [relations]);
+
+  const activeFactionLeader = activeFaction != null
+    ? characters.find((c) => c.id === activeFaction) ?? null
+    : null;
+
   // ═══ STATIC "others" group ═══
   // Every non-main character without active filter/hover styling is rendered
   // into ONE memoized group. While the user only hovers, this array keeps the
   // exact same element references, so React skips re-diffing hundreds of <g>s.
   const staticOthers = useMemo(() => {
     const out: React.ReactNode[] = [];
-    for (const ch of characters) {
+    for (const ch of renderedChars) {
       if (ch.isMain) continue;
       const p = pos.get(ch.id);
       if (!p) continue;
@@ -400,17 +249,17 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
       );
     }
     return out;
-  }, [characters, pos, hasFilter, filterIds, factionOf, factionIndex, showTooltip, hideTooltip]);
+  }, [renderedChars, pos, hasFilter, filterIds, factionOf, factionIndex, showTooltip, hideTooltip]);
 
   // ═══ dynamic "others": filtered / hovered / selected nodes drawn on top ═══
   const dynamicOthers = useMemo(() => {
     const out: CharNode[] = [];
-    for (const ch of characters) {
+    for (const ch of renderedChars) {
       if (ch.isMain) continue;
       if (filterIds?.has(ch.id) || hoveredId === ch.id || selectedId === ch.id) out.push(ch);
     }
     return out;
-  }, [characters, filterIds, hoveredId, selectedId]);
+  }, [renderedChars, filterIds, hoveredId, selectedId]);
 
   // ═══ PAN (drag) ═══
   const onPointerDown = (e: React.PointerEvent) => {
@@ -448,85 +297,31 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
       <div className="starfield absolute inset-0" />
 
       {/* ═══ TOP BAR: search + stats ═══ */}
-      <div className="relative z-20 flex flex-col gap-2 border-b border-gold/10 bg-black/40 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3 text-xs text-gold/70">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/20 bg-gold/10 px-2.5 py-1">
-            <Users className="h-3 w-3" />
-            {toArabicDigits(characters.length)} شخصية
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/20 bg-gold/10 px-2.5 py-1">
-            <GitFork className="h-3 w-3" />
-            {toArabicDigits(factionLeaders.mains.length)} عائلة
-          </span>
-          <span className="hidden items-center gap-1.5 rounded-full border border-gold/20 bg-gold/10 px-2.5 py-1 sm:inline-flex">
-            {toArabicDigits(relations.length)} علاقة
-          </span>
-          <button
-            onClick={() => setShowRelations((v) => !v)}
-            className={"rounded-full border px-2.5 py-1 text-xs transition-colors " + (showRelations ? "border-gold/60 bg-gold/20 text-gold" : "border-gold/20 bg-gold/10 text-gold/60 hover:text-gold")}
-            title="إظهار/إخفاء خطوط العلاقات — الإخفاء أسرع وأوضح"
-          >
-            {showRelations ? "إخفاء العلاقات" : "إظهار العلاقات"}
-          </button>
-        </div>
-
-        <div className="relative">
-          <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gold/50" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="ابحث عن شخصية…"
-            className="w-full rounded-lg border border-gold/20 bg-black/60 py-1.5 pr-8 pl-8 text-xs text-gold placeholder:text-gold/30 focus:border-gold/50 focus:outline-none sm:w-52"
-          />
-          {query && (
-            <button onClick={() => setQuery("")} className="absolute left-2 top-1/2 -translate-y-1/2 text-gold/50 hover:text-gold">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
+      <NetworkTopBar
+        characterCount={characters.length}
+        familyCount={factionLeaders.mains.length}
+        relationCount={relations.length}
+        showRelations={showRelations}
+        onToggleRelations={() => setShowRelations((v) => !v)}
+        query={query}
+        onQueryChange={setQuery}
+      />
 
       {/* ═══ ZOOM CONTROLS ═══ */}
-      <div className="absolute top-16 left-3 z-20 flex flex-col gap-1">
-        <button onClick={() => setZoom((z) => Math.min(z + 0.2, 2.5))} className="flex h-8 w-8 items-center justify-center rounded-md border border-gold/30 bg-black/60 text-gold/80 backdrop-blur-sm transition-colors hover:bg-gold/20 hover:text-gold" title="تكبير">
-          <ZoomIn className="h-4 w-4" />
-        </button>
-        <button onClick={() => setZoom((z) => Math.max(z - 0.2, 0.5))} className="flex h-8 w-8 items-center justify-center rounded-md border border-gold/30 bg-black/60 text-gold/80 backdrop-blur-sm transition-colors hover:bg-gold/20 hover:text-gold" title="تصغير">
-          <ZoomOut className="h-4 w-4" />
-        </button>
-        <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="flex h-8 w-8 items-center justify-center rounded-md border border-gold/30 bg-black/60 text-gold/80 backdrop-blur-sm transition-colors hover:bg-gold/20 hover:text-gold" title="إعادة ضبط">
-          <Maximize2 className="h-4 w-4" />
-        </button>
-      </div>
+      <NetworkZoomControls
+        zoom={zoom}
+        onZoom={setZoom}
+        onReset={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+      />
 
       {/* ═══ LEGEND ═══ */}
-      <div className="absolute right-3 bottom-3 z-20 max-w-[240px] rounded-lg border border-gold/15 bg-black/70 p-2.5 backdrop-blur-sm">
-        <p className="mb-1.5 text-[10px] font-bold text-gold/70">عائلات الرواية</p>
-        <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-          {factionLeaders.mains.slice(0, 12).map((m, i) => (
-            <button
-              key={m.id}
-              onClick={() => setActiveFaction(activeFaction === m.id ? null : m.id)}
-              className="flex items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[9px] text-gold/60 transition-colors hover:bg-gold/10 hover:text-gold"
-              style={{ borderRight: `2px solid ${FACTION_COLORS[i % FACTION_COLORS.length]}` }}
-            >
-              <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: FACTION_COLORS[i % FACTION_COLORS.length] }} />
-              <span className="truncate">{m.name}</span>
-              <span className="mr-auto text-gold/40">{toArabicDigits(factionCounts.get(m.id) || 0)}</span>
-            </button>
-          ))}
-        </div>
-        <div className="mt-1.5 border-t border-gold/10 pt-1.5">
-          {Object.entries(REL_STYLES)
-            .filter(([key]) => relations.some((r) => r.type === key))
-            .map(([key, val]) => (
-              <span key={key} className="mr-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px]" style={{ backgroundColor: `${val.color}20`, color: val.color }}>
-                <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: val.color }} />
-                {val.label}
-              </span>
-            ))}
-        </div>
-      </div>
+      <NetworkLegend
+        mains={factionLeaders.mains}
+        factionCounts={factionCounts}
+        activeFaction={activeFaction}
+        onToggleFaction={(id) => setActiveFaction(activeFaction === id ? null : id)}
+        presentRelTypes={presentRelTypes}
+      />
 
       {/* ═══ RESET ═══ */}
       {hasFilter && (
@@ -535,68 +330,27 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
         </button>
       )}
 
-      {/* ═══ SELECTED / FACTION INFO ═══ */}
-      {selected && (
-        <div className="absolute top-16 right-3 z-20 max-w-[260px] rounded-lg border border-gold/25 bg-black/85 p-3 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gradient-to-br from-gold/30 to-transparent">
-              <span className="font-naskh text-lg font-bold text-gold">{selected.name.charAt(0)}</span>
-            </div>
-            <div className="min-w-0">
-              <h3 className="truncate font-naskh text-sm font-bold text-gold">{selected.name}</h3>
-              <p className="text-[10px] text-gold/60">
-                {toArabicDigits(selected.mentionCount || selected.appearanceCount)} ذكر · {toArabicDigits(selectedRels.length)} علاقة
-              </p>
-            </div>
-          </div>
-          {selected.description && (
-            <p className="mt-2 text-[11px] leading-relaxed text-gold/70">
-              {selected.description.length > 120 ? selected.description.slice(0, 120) + "…" : selected.description}
-            </p>
-          )}
-          {selectedRels.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {selectedRels.map((r) => {
-                const otherId = r.fromId === selected.id ? r.toId : r.fromId;
-                const other = characters.find((c) => c.id === otherId);
-                const style = getRelStyle(r.type);
-                return (
-                  <span key={r.id} className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px]" style={{ backgroundColor: `${style.color}20`, color: style.color }}>
-                    {r.fromId === selected.id ? "→" : "←"} {style.label}: {other?.name ?? "?"}
-                  </span>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      {/* ═══ LOAD MORE NODES ═══ */}
+      {hiddenCount > 0 && !q && (
+        <button
+          onClick={() => setNodeLimit((n) => n + 300)}
+          className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-gold/30 bg-black/75 px-4 py-1.5 text-xs text-gold backdrop-blur-sm transition-colors hover:bg-gold/20"
+          title="عرض المزيد من الشخصيات في الدائرة"
+        >
+          عرض {toArabicDigits(Math.min(hiddenCount, 300))} شخصية أخرى
+          <span className="mr-1.5 text-gold/40">
+            ({toArabicDigits(renderedChars.length)} / {toArabicDigits(characters.length)})
+          </span>
+        </button>
       )}
 
-      {activeFaction && !selected && (
-        <div className="absolute top-16 right-3 z-20 max-w-[240px] rounded-lg border border-gold/25 bg-black/85 p-3 backdrop-blur-sm">
-          {(() => {
-            const leader = characters.find((c) => c.id === activeFaction);
-            if (!leader) return null;
-            const list = factionLeaders.map.get(activeFaction) || [];
-            return (
-              <>
-                <h3 className="font-naskh text-sm font-bold text-gold">
-                  عائلة {leader.name}
-                </h3>
-                <p className="mt-0.5 text-[10px] text-gold/60">{toArabicDigits(list.length + 1)} شخصية</p>
-                <div className="mt-2 flex max-h-40 flex-wrap gap-1 overflow-y-auto">
-                  {[leader, ...list].slice(0, 60).map((c) => (
-                    <span key={c.id} className="rounded-full border border-gold/15 bg-gold/5 px-1.5 py-0.5 text-[9px] text-gold/80">
-                      {c.name}
-                    </span>
-                  ))}
-                  {list.length > 59 && (
-                    <span className="px-1 py-0.5 text-[9px] text-gold/40">+ {toArabicDigits(list.length - 59)} أخرى</span>
-                  )}
-                </div>
-              </>
-            );
-          })()}
-        </div>
+      {/* ═══ SELECTED / FACTION INFO ═══ */}
+      {selected && (
+        <NetworkSelectedPanel selected={selected} selectedRels={selectedRels} characters={characters} />
+      )}
+
+      {activeFaction && !selected && activeFactionLeader && (
+        <NetworkFactionPanel leader={activeFactionLeader} members={factionLeaders.map.get(activeFaction) || []} />
       )}
 
       {/* ═══ SVG GRAPH ═══ */}
@@ -703,7 +457,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
           {staticOthers}
 
           {/* MAIN RING NODES */}
-          {characters.map((ch) => {
+          {renderedChars.map((ch) => {
             if (!ch.isMain) return null;
             const p = pos.get(ch.id);
             if (!p) return null;
@@ -831,13 +585,11 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
       </div>
 
       {/* ═══ TOOLTIP — always mounted; coords via ref so cursor tracking never re-renders the graph ═══ */}
-      <div
-        ref={tooltipElRef}
-        className={"pointer-events-none fixed z-50 rounded-lg border border-gold/30 bg-black/90 px-3 py-2 shadow-xl backdrop-blur-sm transition-opacity duration-100 " + (tooltip ? "opacity-100" : "opacity-0")}
-        style={{ left: -9999, top: -9999 }}>
-        <p className="font-naskh text-sm font-bold text-gold">{tooltip?.text || ""}</p>
-        {tooltip?.sub && <p className="mt-0.5 text-[10px] text-gold/60">{tooltip.sub}</p>}
-      </div>
+      <NetworkTooltip
+        elRef={tooltipElRef}
+        text={tooltip?.text || ""}
+        sub={tooltip?.sub}
+      />
     </div>
   );
 }

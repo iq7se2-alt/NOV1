@@ -137,6 +137,17 @@ export function CharactersGrid({
     ? relations.filter((r) => r.fromId === selectedId || r.toId === selectedId)
     : [];
 
+  // ═══ PROGRESSIVE CARDS ═══
+  // 788 cards at once is heavy DOM; render a screenful, then extend.
+  // (No reset-on-filter: a narrower result simply fits under the limit.)
+  const [cardLimit, setCardLimit] = useState(60);
+
+  const shown = useMemo(
+    () => filtered.slice(0, cardLimit),
+    [filtered, cardLimit]
+  );
+  const remaining = filtered.length - shown.length;
+
   // Appearances load on demand from the API when a card opens
   const [appearances, setAppearances] = useState<
     { number: number; para: number }[] | null
@@ -235,7 +246,7 @@ export function CharactersGrid({
 
       {/* ═══ GRID ═══ */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {filtered.map((char) => {
+        {shown.map((char) => {
           const charRels = relations.filter(
             (r) => r.fromId === char.id || r.toId === char.id
           );
@@ -563,6 +574,21 @@ export function CharactersGrid({
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ═══ LOAD MORE CARDS ═══ */}
+      {remaining > 0 && (
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <button
+            onClick={() => setCardLimit((n) => n + 60)}
+            className="rounded-full border border-gold/30 bg-gold/10 px-6 py-2 text-sm text-gold transition-colors hover:bg-gold/20"
+          >
+            عرض {toArabicDigits(Math.min(remaining, 60))} كرتاً آخر
+          </button>
+          <p className="text-[10px] text-muted-foreground">
+            معروض {toArabicDigits(shown.length)} من {toArabicDigits(filtered.length)}
+          </p>
         </div>
       )}
     </>
