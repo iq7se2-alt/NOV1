@@ -1129,3 +1129,94 @@
 .dark-void ::selection {
   background: rgba(212, 176, 94, 0.25);
 }
+
+/* ---- Water theme (مائي) ---- */
+/* ═══════════════════════════════════════════════════════════════
+   WATER THEME (مائي) — a deep-ocean dark theme.
+   Same structure as .dark-void so every surface (nav, cards, prose,
+   scrollbar, selection) follows the theme instead of staying gold.
+   ═══════════════════════════════════════════════════════════════ */
+.water {
+  --radius: 0.5rem;
+  --background: #04141f;
+  --foreground: #d6ecf7;
+  --card: #061c2b;
+  --card-foreground: #d6ecf7;
+  --popover: #07202f;
+  --popover-foreground: #d6ecf7;
+  --primary: #4cc4e8;
+  --primary-foreground: #01121c;
+  --secondary: #17597a;
+  --secondary-foreground: #d6ecf7;
+  --muted: #08222f;
+  --muted-foreground: #6f9db4;
+  --accent: #0a2c3f;
+  --accent-foreground: #4cc4e8;
+  --destructive: #b4453a;
+  --border: rgba(76, 196, 232, 0.14);
+  --input: rgba(76, 196, 232, 0.16);
+  --ring: #4cc4e8;
+  --chart-1: #4cc4e8;
+  --chart-2: #7fdcf2;
+  --chart-3: #2a9fc4;
+  --chart-4: #9ee8f7;
+  --chart-5: #14567a;
+  --sidebar: #051a27;
+  --sidebar-foreground: #d6ecf7;
+  --sidebar-primary: #4cc4e8;
+  --sidebar-primary-foreground: #01121c;
+  --sidebar-accent: #0a2c3f;
+  --sidebar-accent-foreground: #4cc4e8;
+  --sidebar-border: rgba(76, 196, 232, 0.14);
+  --sidebar-ring: #4cc4e8;
+  --gold: #4cc4e8;
+  --gold-soft: #9ee8f7;
+  --purple: #2a7fa0;
+}
+
+/* Keep the deep-water gradient visible behind the content */
+.water body {
+  background: #04141f;
+  color: #d6ecf7;
+}
+.water .glass-nav {
+  background: rgba(4, 20, 31, 0.92);
+  border-bottom: 1px solid rgba(76, 196, 232, 0.12);
+}
+.water .gold-card {
+  background: #061c2b;
+  border: 1px solid rgba(76, 196, 232, 0.14);
+}
+.water .gold-card:hover {
+  border-color: rgba(76, 196, 232, 0.35);
+  box-shadow: 0 0 20px rgba(76, 196, 232, 0.08);
+}
+.water .reader-prose {
+  color: #d9eef8;
+  text-shadow: 0 0 1px rgba(76, 196, 232, 0.06);
+}
+.water .cosmic-bg {
+  background: linear-gradient(180deg, #04141f 0%, #061d2c 55%, #021019 100%);
+}
+.water .starfield::before {
+  display: block;
+  opacity: 0.22;
+}
+.water ::-webkit-scrollbar-track {
+  background: #04141f;
+}
+.water ::-webkit-scrollbar-thumb {
+  background: rgba(76, 196, 232, 0.22);
+}
+.water ::-webkit-scrollbar-thumb:hover {
+  background: rgba(76, 196, 232, 0.35);
+}
+.water ::selection {
+  background: rgba(76, 196, 232, 0.28);
+}
+.water .text-gold-gradient {
+  background: linear-gradient(135deg, #9ee8f7 0%, #4cc4e8 50%, #2a9fc4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

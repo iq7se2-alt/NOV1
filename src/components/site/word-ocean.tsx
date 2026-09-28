@@ -12,7 +12,6 @@ type FloatingWord = {
   vy: number;
   size: number;
   opacity: number;
-  hue: number;
   burst?: number; // burst animation timer
 };
 
@@ -46,6 +45,34 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    /**
+     * Read the theme's own colours from the CSS variables so the ocean belongs
+     * to whatever theme is active (gold in dark, cyan in water, …) instead of
+     * always being the same blue. Resolved once per mount, not per frame.
+     */
+    const css = getComputedStyle(document.documentElement);
+    const hexToHueSat = (raw: string) => {
+      const m = raw.trim().match(/^#([0-9a-f]{6})$/i);
+      if (!m) return { h: 190, s: 60 };
+      const n = parseInt(m[1], 16);
+      const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+      let h = 0;
+      if (d !== 0) {
+        if (max === r) h = ((g - b) / d) % 6;
+        else if (max === g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+      }
+      h = Math.round(h * 60);
+      if (h < 0) h += 360;
+      const l = (max + min) / 2;
+      const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+      return { h, s: Math.round(s * 100) };
+    };
+    const base = hexToHueSat(css.getPropertyValue("--gold") || "#d4a843");
+    const HUE = base.h;
+    const SAT = Math.max(30, base.s);
+
     // Cached canvas size in CSS pixels. Reading canvas.offsetWidth inside the
     // render loop forces a layout flush for every single word every frame.
     let cw = canvas.offsetWidth;
@@ -71,8 +98,7 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
         vx: (Math.random() - 0.5) * 0.3,
         vy: (Math.random() - 0.5) * 0.2,
         size: 14 + Math.random() * 22,
-        opacity: 0.3 + Math.random() * 0.5,
-        hue: 180 + Math.random() * 60,
+        opacity: 0.3 + Math.random() * 0.5,
       };
     });
 
@@ -126,7 +152,7 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
       // Draw wave lines
       for (let w = 0; w < 3; w++) {
         ctx.beginPath();
-        ctx.strokeStyle = `hsla(${190 + w * 10}, 60%, 50%, 0.08)`;
+        ctx.strokeStyle = `hsla(${HUE}, ${SAT}%, 50%, 0.08)`;
         ctx.lineWidth = 1;
         for (let x = 0; x < cw; x += 5) {
           const y =
@@ -177,16 +203,16 @@ export function WordOceanCanvas({ active }: { active: boolean }) {
         ctx.textBaseline = "middle";
 
         if (burst > 0) {
-          ctx.shadowColor = "#ffd700";
+          ctx.shadowColor = css.getPropertyValue("--gold-soft").trim() || "#ffd700";
           ctx.shadowBlur = 30 + burst * 20;
-          ctx.fillStyle = `rgba(255, 215, 0, ${burst})`;
+          ctx.fillStyle = `hsla(${HUE}, ${SAT}%, 65%, ${burst})`;
         } else if (hovered) {
-          ctx.shadowColor = "#d4b05e";
+          ctx.shadowColor = css.getPropertyValue("--gold").trim() || "#d4b05e";
           ctx.shadowBlur = 20;
-          ctx.fillStyle = "#f0c870";
+          ctx.fillStyle = css.getPropertyValue("--gold-soft").trim() || "#f0c870";
         } else {
           ctx.shadowBlur = 0;
-          ctx.fillStyle = `hsla(${word.hue}, 50%, 70%, ${word.opacity})`;
+          ctx.fillStyle = `hsla(${HUE}, ${SAT}%, 70%, ${word.opacity})`;
         }
         ctx.fillText(word.text, word.x, word.y);
       }

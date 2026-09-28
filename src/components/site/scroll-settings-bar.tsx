@@ -14,7 +14,6 @@ import {
   Eye,
   EyeOff,
   Search,
-  Music,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AmbientSounds } from "./ambient-sounds";
@@ -33,7 +32,10 @@ import { FONTS, DEFAULT_FONT, FONT_KEY_STORAGE, FONT_SIZE_STORAGE, isValidFont, 
  * - Smooth animations, consistent spacing
  */
 export function ScrollSettingsBar({
-  chapterContentSelector = ".reader-prose, .chapter-content, .prose, article",
+  // ".reader-prose" is the chapter TEXT block. `article` is deliberately NOT in
+  // the list: it wraps the comments as well, which made the progress bar (and the
+  // font size) apply to the comment section too.
+  chapterContentSelector = ".reader-prose",
 }: {
   chapterContentSelector?: string;
 }) {
@@ -59,7 +61,6 @@ export function ScrollSettingsBar({
     if (typeof window === "undefined") return false;
     return localStorage.getItem("reader-highlight-chars") === "true";
   });
-  const [showCharDetails, setShowCharDetails] = useState(false);
 
   const hideTimerRef = useRef<number | null>(null);
   const chromeTimerRef = useRef<number | null>(null);
@@ -210,7 +211,7 @@ export function ScrollSettingsBar({
       >
         <div className="absolute inset-0 bg-gold/10" />
         <div
-          className="h-full bg-gradient-to-r from-gold/60 via-gold to-gold-soft transition-[width] duration-150"
+          className="h-full bg-gradient-to-r from-gold/60 via-gold to-gold-soft transition-[width] duration-300 ease-out"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -240,6 +241,20 @@ export function ScrollSettingsBar({
           >
             <Settings2 className="h-4 w-4" />
           </button>
+        </div>
+      </div>
+
+      {/* ═══ Audio — its own control on the RIGHT edge ═══ */}
+      {/* Kept out of the settings panel: sound deserves a one-tap button, and it
+          mirrors the settings pill (hides while scrolling, returns when you stop). */}
+      <div
+        className={cn(
+          "fixed right-3 top-1/2 z-40 -translate-y-1/2 transition-all duration-300",
+          chromeVisible || settingsOpen ? "opacity-100" : "pointer-events-none translate-x-3 opacity-0"
+        )}
+      >
+        <div className="flex items-center justify-center rounded-full border border-gold/20 bg-background/85 p-1 shadow-lg backdrop-blur-md">
+          <AmbientSounds compact />
         </div>
       </div>
 
@@ -278,9 +293,9 @@ export function ScrollSettingsBar({
                 <div className="px-4 py-3">
                   <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gold/50">
                     <Type className="h-3 w-3" />
-                    الخط
+                    الخط والحجم
                     <span className="mr-auto text-[9px] text-muted-foreground/60">
-                      {filteredFonts.length} نوع
+                      {filteredFonts.length} خط
                     </span>
                   </div>
                   {/* Font search */}
@@ -348,7 +363,7 @@ export function ScrollSettingsBar({
                 <div className="px-4 py-3">
                   <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gold/50">
                     <Gauge className="h-3 w-3" />
-                    القراءة
+                    التمرير التلقائي
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -395,7 +410,7 @@ export function ScrollSettingsBar({
                 <div className="px-4 py-3">
                   <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gold/50">
                     <Users className="h-3 w-3" />
-                    الشخصيات
+                    إبراز الشخصيات
                   </div>
                   <div className="space-y-1.5">
                     <button
@@ -435,50 +450,6 @@ export function ScrollSettingsBar({
                         />
                       </span>
                     </button>
-                    <button
-                      onClick={() => setShowCharDetails((s) => !s)}
-                      className={cn(
-                        "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-xs transition-all",
-                        showCharDetails
-                          ? "border-purple/50 bg-purple/15 text-purple"
-                          : "border-gold/20 text-muted-foreground hover:border-gold/30 hover:text-gold/80"
-                      )}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Users className="h-3.5 w-3.5" />
-                        تفاصيل الشخصيات
-                      </span>
-                      <span
-                        className={cn(
-                          "h-4 w-7 rounded-full transition-colors",
-                          showCharDetails ? "bg-purple/40" : "bg-muted"
-                        )}
-                      >
-                        <span
-                          className="block h-3.5 w-3.5 rounded-full bg-white shadow"
-                          style={{
-                            transform: showCharDetails
-                              ? "translateX(-12px)"
-                              : "translateX(2px)",
-                            marginTop: "1px",
-                          }}
-                        />
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* ─── Section 4: الأصوات (Ambient sounds) ─── */}
-                {/* The music used to sit in the floating pill next to the gear,
-                    which kept a permanent control over the text. It lives here
-                    now so nothing floats while you read. */}
-                <div className="px-4 py-3">
-                  <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gold/50">
-                    <Music className="h-3 w-3" />
-                    الأصوات
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <AmbientSounds />
                   </div>
                 </div>
 
