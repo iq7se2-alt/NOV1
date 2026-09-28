@@ -29,7 +29,6 @@ import { Navbar } from "@/components/site/navbar";
 import { SiteFooter } from "@/components/site/footer";
 import { ThemeProvider } from "@/components/site/theme-provider";
 import { LanguageProvider } from "@/lib/i18n";
-import { CrystalBall } from "@/components/site/crystal-ball";
 import { ContinueReadingFab } from "@/components/site/continue-reading-fab";
 import { SmoothScrollProvider } from "@/components/site/smooth-scroll-provider";
 
@@ -87,7 +86,6 @@ export default function RootLayout({
               <Navbar />
               <main className="flex-1 flex flex-col pt-16">{children}</main>
               <SiteFooter />
-              <CrystalBall />
               <ContinueReadingFab />
               <Toaster />
             </SmoothScrollProvider>

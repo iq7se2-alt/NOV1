@@ -156,6 +156,23 @@ export function ScrollSettingsBar({
     };
   }, [autoScroll]);
 
+  // Keyboard shortcut: "S" toggles the panel, Escape closes it. Handy because the
+  // pill is hidden while scrolling.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (e.key === "s" || e.key === "S") {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        setSettingsOpen((s) => !s);
+      } else if (e.key === "Escape") {
+        setSettingsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const toggleFont = useCallback((dir: 1 | -1) => {
     setFontSize((prev) => Math.max(12, Math.min(32, prev + dir * 2)));
   }, []);
@@ -188,13 +205,14 @@ export function ScrollSettingsBar({
         )}
       </div>
 
-      {/* ═══ Top action bar — single organized pill ═══ */}
-      {/* Hides while the user is actually reading (scrolling) and comes back
-          when scrolling stops, so nothing permanent sits over the text. */}
+      {/* ═══ Settings pill — LEFT edge, vertically centred ═══ */}
+      {/* Lives on the left (where the crystal ball used to be) so it never sits
+          over the start of an Arabic paragraph, and it fades out while the
+          reader scrolls. */}
       <div
         className={cn(
-          "fixed left-1/2 top-3 z-40 -translate-x-1/2 transition-all duration-300",
-          chromeVisible || settingsOpen ? "opacity-100" : "pointer-events-none -translate-y-3 opacity-0"
+          "fixed left-3 top-1/2 z-40 -translate-y-1/2 transition-all duration-300",
+          chromeVisible || settingsOpen ? "opacity-100" : "pointer-events-none -translate-x-3 opacity-0"
         )}
       >
         <div className="flex items-center gap-0.5 rounded-full border border-gold/20 bg-background/85 p-1 shadow-lg backdrop-blur-md">
@@ -207,7 +225,7 @@ export function ScrollSettingsBar({
                 ? "bg-gold/15 text-gold"
                 : "text-gold/60 hover:bg-gold/10 hover:text-gold"
             )}
-            title="إعدادات القراءة"
+            title="إعدادات القراءة (اضغط S)"
             aria-label="إعدادات القراءة"
           >
             <Settings2 className="h-4 w-4" />
@@ -224,8 +242,10 @@ export function ScrollSettingsBar({
             onClick={() => setSettingsOpen(false)}
           />
 
-          <div className="fixed left-1/2 top-14 z-50 w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 animate-float-in">
-            <div className="overflow-hidden rounded-2xl border border-gold/25 bg-background/95 shadow-2xl backdrop-blur-md">
+          {/* Anchored to the left pill, opening to its right so the panel can
+              never run off the bottom of a short window. */}
+          <div className="fixed left-16 top-1/2 z-50 w-[min(26rem,calc(100vw-5rem))] -translate-y-1/2 animate-float-in">
+            <div className="max-h-[80vh] overflow-hidden rounded-2xl border border-gold/25 bg-background/95 shadow-2xl backdrop-blur-md">
               {/* Header */}
               <div className="flex items-center justify-between border-b border-gold/15 px-4 py-2.5">
                 <div className="flex items-center gap-2">
@@ -242,8 +262,8 @@ export function ScrollSettingsBar({
                 </button>
               </div>
 
-              {/* Body — organized sections */}
-              <div className="divide-y divide-gold/10">
+              {/* Body — organized sections (scrolls inside the panel) */}
+              <div className="max-h-[calc(80vh-3rem)] overflow-y-auto divide-y divide-gold/10" style={{ scrollbarWidth: "thin" }}>
                 {/* ─── Section 1: الخط (Font) ─── */}
                 <div className="px-4 py-3">
                   <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gold/50">
