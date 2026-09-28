@@ -2,14 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ListOrdered,
-  Users,
-  EyeOff,
-  Settings,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -37,19 +30,6 @@ type ReaderChapter = {
 
 type ChapterLink = { number: number; title: string } | null;
 
-type FontFamilyKey = "naskh" | "cairo" | "amiri";
-type FontSizeKey = "sm" | "md" | "lg";
-
-const FONT_FAMILIES: Record<FontFamilyKey, string> = {
-  naskh: "var(--font-naskh), serif",
-  cairo: "var(--font-cairo), sans-serif",
-  amiri: "var(--font-amiri), serif",
-};
-const FONT_SIZES: Record<FontSizeKey, string> = {
-  sm: "18px",
-  md: "20px",
-  lg: "24px",
-};
 
 function CharacterMention({ character, name }: { character: Character | undefined; name: string }) {
   if (!character) return <span className="font-semibold text-gold">{name}</span>;
@@ -134,9 +114,41 @@ export function BookPageReader({
   characters?: Character[];
 }) {
   const [showComments, setShowComments] = useState(true);
-  const [highlightCharacters, setHighlightCharacters] = useState(true);
-  const [fontFamily, setFontFamily] = useState<FontFamilyKey>("naskh");
-  const [fontSize, setFontSize] = useState<FontSizeKey>("md");
+  // Font family/size are owned by ScrollSettingsBar (which writes them into
+  // localStorage and applies them to the content element). This component only
+  // mirrors them for its own inline styles, so there is a single source of truth.
+  const [fontFamily, setFontFamily] = useState<string>("var(--font-naskh), serif");
+  const [fontSize, setFontSize] = useState<string>("18px");
+  // Owned by ScrollSettingsBar (key: reader-highlight-chars) — mirrored here so
+  // the character names toggle in the settings panel actually drives this reader.
+  const [highlightCharacters, setHighlightCharacters] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("reader-highlight-chars") === "true"
+  );
+
+  useEffect(() => {
+    const sync = (e: StorageEvent) => {
+      if (e.key === "reader-highlight-chars" || e.key === null) {
+        setHighlightCharacters(localStorage.getItem("reader-highlight-chars") === "true");
+      }
+    };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
+
+  useEffect(() => {
+    const read = () => {
+      const fam = localStorage.getItem("reader-font-family");
+      const size = localStorage.getItem("reader-font-size");
+      if (fam) setFontFamily(`var(--font-${fam}), serif`);
+      if (size) setFontSize(`${Number(size) || 18}px`);
+    };
+    read();
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key.startsWith("reader-font")) read();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   const paragraphs = chapter.content
     .split(/\n\s*\n+/)
@@ -236,7 +248,7 @@ export function BookPageReader({
           الفصل {toArabicDigits(chapter.number)}
           <span className="h-px w-8 bg-gold/40" />
         </div>
-        <h1 className="font-naskh text-4xl font-bold text-gold-gradient sm:text-5xl" style={{ fontFamily: FONT_FAMILIES[fontFamily] }}>
+        <h1 className="font-naskh text-4xl font-bold text-gold-gradient sm:text-5xl" style={{ fontFamily }}>
           {chapter.title}
         </h1>
       </header>
@@ -244,7 +256,7 @@ export function BookPageReader({
       {/* Content */}
       <div
         className="reader-prose"
-        style={{ fontFamily: FONT_FAMILIES[fontFamily], fontSize: FONT_SIZES[fontSize], lineHeight: "2.5" }}
+        style={{ fontFamily, fontSize, lineHeight: "2.5" }}
       >
         {paragraphs.map((p, i) =>
           highlightCharacters ? (
@@ -310,79 +322,6 @@ export function BookPageReader({
         </Link>
       </div>
 
-      {/* Floating settings button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Popover>
-          <PopoverTrigger asChild>
-            <button className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-gold/40 bg-background shadow-lg shadow-gold/10 transition-all hover:border-gold hover:shadow-gold/20">
-              <Settings className="h-5 w-5 text-gold" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" side="top" className="w-56 border-gold/25 bg-popover p-3">
-            <div className="mb-2 text-xs font-bold text-gold">نوع الخط</div>
-            <div className="mb-3 flex gap-1">
-              {(["naskh", "cairo", "amiri"] as FontFamilyKey[]).map((k) => (
-                <button
-                  key={k}
-                  onClick={() => setFontFamily(k)}
-                  className={cn(
-                    "flex-1 rounded px-2 py-1.5 text-xs transition-colors",
-                    fontFamily === k
-                      ? "bg-gold/20 text-gold"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                  style={{ fontFamily: FONT_FAMILIES[k] }}
-                >
-                  {k === "naskh" ? "ن" : k === "cairo" ? "ق" : "أ"}
-                </button>
-              ))}
-            </div>
-            <div className="mb-2 text-xs font-bold text-gold">حجم الخط</div>
-            <div className="mb-3 flex gap-1">
-              {(["sm", "md", "lg"] as FontSizeKey[]).map((k) => (
-                <button
-                  key={k}
-                  onClick={() => setFontSize(k)}
-                  className={cn(
-                    "flex-1 rounded px-2 py-1.5 text-xs transition-colors",
-                    fontSize === k
-                      ? "bg-gold/20 text-gold"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {k === "sm" ? "صغير" : k === "md" ? "متوسط" : "كبير"}
-                </button>
-              ))}
-            </div>
-            {characters.length > 0 && (
-              <>
-                <div className="mb-2 border-t border-gold/15 pt-2 text-xs font-bold text-gold">الشخصيات</div>
-                <button
-                  onClick={() => setHighlightCharacters(!highlightCharacters)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors",
-                    highlightCharacters
-                      ? "bg-gold/20 text-gold"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {highlightCharacters ? (
-                    <>
-                      <Users className="h-3.5 w-3.5" />
-                      إخفاء أسماء الشخصيات
-                    </>
-                  ) : (
-                    <>
-                      <EyeOff className="h-3.5 w-3.5" />
-                      إظهار أسماء الشخصيات
-                    </>
-                  )}
-                </button>
-              </>
-            )}
-          </PopoverContent>
-        </Popover>
-      </div>
     </article>
   );
 }

@@ -14,6 +14,7 @@ import {
   Eye,
   EyeOff,
   Search,
+  Music,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AmbientSounds } from "./ambient-sounds";
@@ -38,6 +39,8 @@ export function ScrollSettingsBar({
 }) {
   const [progress, setProgress] = useState(0);
   const [barVisible, setBarVisible] = useState(true);
+  // the settings pill fades out while scrolling and returns when you stop
+  const [chromeVisible, setChromeVisible] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Settings state
@@ -59,6 +62,7 @@ export function ScrollSettingsBar({
   const [showCharDetails, setShowCharDetails] = useState(false);
 
   const hideTimerRef = useRef<number | null>(null);
+  const chromeTimerRef = useRef<number | null>(null);
   const autoScrollRef = useRef<number | null>(null);
 
   // ─── Scroll tracking ───
@@ -70,16 +74,23 @@ export function ScrollSettingsBar({
       const pct = docHeight > 0 ? (currentY / docHeight) * 100 : 0;
       setProgress(Math.min(100, Math.max(0, pct)));
       setBarVisible(true);
+      // the settings pill behaves the same way, but reappears a touch sooner
+      setChromeVisible(true);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       hideTimerRef.current = window.setTimeout(() => {
         setBarVisible(false);
       }, 500);
+      if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
+      chromeTimerRef.current = window.setTimeout(() => {
+        setChromeVisible(false);
+      }, 900);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => {
       window.removeEventListener("scroll", handleScroll);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
     };
   }, []);
 
@@ -178,7 +189,14 @@ export function ScrollSettingsBar({
       </div>
 
       {/* ═══ Top action bar — single organized pill ═══ */}
-      <div className="fixed left-1/2 top-3 z-40 -translate-x-1/2">
+      {/* Hides while the user is actually reading (scrolling) and comes back
+          when scrolling stops, so nothing permanent sits over the text. */}
+      <div
+        className={cn(
+          "fixed left-1/2 top-3 z-40 -translate-x-1/2 transition-all duration-300",
+          chromeVisible || settingsOpen ? "opacity-100" : "pointer-events-none -translate-y-3 opacity-0"
+        )}
+      >
         <div className="flex items-center gap-0.5 rounded-full border border-gold/20 bg-background/85 p-1 shadow-lg backdrop-blur-md">
           {/* Settings gear */}
           <button
@@ -194,14 +212,6 @@ export function ScrollSettingsBar({
           >
             <Settings2 className="h-4 w-4" />
           </button>
-
-          {/* Divider */}
-          <div className="h-5 w-px bg-gold/15" />
-
-          {/* Audio (ambient sounds compact) */}
-          <div className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-gold/10">
-            <AmbientSounds compact />
-          </div>
         </div>
       </div>
 
@@ -425,6 +435,20 @@ export function ScrollSettingsBar({
                         />
                       </span>
                     </button>
+                  </div>
+                </div>
+
+                {/* ─── Section 4: الأصوات (Ambient sounds) ─── */}
+                {/* The music used to sit in the floating pill next to the gear,
+                    which kept a permanent control over the text. It lives here
+                    now so nothing floats while you read. */}
+                <div className="px-4 py-3">
+                  <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gold/50">
+                    <Music className="h-3 w-3" />
+                    الأصوات
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AmbientSounds />
                   </div>
                 </div>
 
