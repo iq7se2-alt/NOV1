@@ -180,3 +180,27 @@ Work Log:
   - Search: `/api/search?entitiesOnly=1` returns name-matched characters/places (Arabic-normalised, starts-with ranked first); the dialog shows them above the full-text results.
 - **Images**: 62 characters with >=100 mentions have no image. Audited all 447 files on disk — no unused file matches any of them, and most are non-human entities (empires, species, generic titles like "المارشال") that shouldn't have portraits. Nothing to recover; needs new artwork if wanted.
 - **Verify**: tsc 0, eslint 0 errors (21 pre-existing warnings), `next build` green with /top and /timeline in the route table. One Turbopack font-fetch failure was a transient network error — rebuild was clean.
+---
+Task ID: 19
+Agent: main (opencode)
+Task: (1) fix cropped character portraits, (2) verify the extraction with audit agents, (3) sync + extract the new chapters and comments.
+
+Work Log:
+- **(1) Portraits were cropped** — the reader popover used `max-h-72 w-full object-contain` with NO fixed box, so the <img> took its intrinsic ratio and the `overflow-hidden` parent cropped it (matches the screenshot). Fixed every character-image site:
+  - `reader-view.tsx` + `book-page-reader.tsx` popovers → fixed `aspect-[3/4]` box + `object-contain`
+  - `characters-grid.tsx` modal → `max-h/max-w auto` sizing; grid avatar `object-cover` → `object-contain`
+  - `chapter-characters-strip.tsx` avatars → `object-contain`
+  - Verified: zero `object-cover` remains in any character-image component (the rest are chapter covers / circular avatars, where cropping is intended).
+- **(3) Sync first, as asked**: `sync_new_chapters.mjs` pulled **63 new chapters (2403–2465)** from truthnovel.top; `sync_new_comments.mjs` added **3,812 comments**.
+  - `export_new_batches.mjs` wrote them to `_quest/chapters/` and registered batches **122–125**; 4 sub-agents extracted **294 entities / 267 relations**.
+  - Full pipeline: 2,019 canonical entities · 113,950 mentions · 2,477 chapters → DB **803 characters (+15), 267 locations (+18), 92,885 appearance rows, 2,560 relations**; map coordinates re-laid.
+  - Note: `merge_batches.mjs` silently failed to write its output on the first run — always re-check the file timestamp/mtime after running it.
+- **(2) Verification agents** — the important part. `build_audit_packs.mjs` produced 18 packs, each entity shown with its stored description plus REAL excerpts from the chapter text, then 6 sub-agents fact-checked all **1,070 entities**:
+  - **167 issues**: 67 duplicate · 50 fake_entity · 22 description_wrong · 19 kind_wrong · 9 junk_name.
+  - Real errors the audit caught: `الظل` was matching the law "الظلام", `المارشال`/`السيد`/`الأب`/`إنسان` were generic titles, `امبراطورية غاسان` split into two rows, `جودا` vs `كوكب جودا`, `هادسون` vs `هاديسون`, `الطغاة التسعة` vs `دروغر`, 10 wrong `kind` values (عملاق/الدراكو/عرق قطط الليل were tagged as organisations), and 14 descriptions that described a different character.
+  - One agent cross-checked short names against the chapter files and overturned several false accusations (هاريس، ماركو، الأمير الحادي عشر…) — good discipline, nothing was deleted on a hunch.
+  - Applied safely: **41 fake/junk rows deleted, 30 duplicate merges, 10 kind fixes, 14 wrong descriptions cleared**. Guards: never delete `isMain` rows, never delete anything with >50 mentions, block cross-table merges, and block merges where one side has 5× the mentions.
+  - **Risky merges were deliberately NOT applied** (e.g. `قصر الإمبراطوري` and `قصر عائلة دوليف الملكي` are two different palaces; `الطغاة التسعة` vs `دروغر` may be distinct). 126 open items are listed in `_quest/audit/_review.md` for a human.
+  - Final: **764 characters, 256 locations, 91,150 appearance rows, 2,458 relations**, kinds rebalanced (419 person / 180 faction / 115 creature / 30 group / 17 army / 3 place).
+- **Regression check** (`verify_final.mjs`): 0 boilerplate descriptions, 0 duplicate description groups, manual fixes intact (هيدريك/آرو/كاربان all `person`).
+- **Verify**: tsc 0, eslint 0 errors, /characters /chapters/2401 /top /timeline /worldmap all 200.
