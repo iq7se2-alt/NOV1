@@ -93,9 +93,12 @@ function renderFormattedText(text: string): React.ReactNode {
   return parts.length > 0 ? parts : text;
 }
 
-export function CommentsSection({ chapterNumber, limit }: { chapterNumber: number; limit?: number }) {
+export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: number; limit?: number }) {
   const { toast } = useToast();
   const [comments, setComments] = useState<Comment[]>([]);
+  // Only render the first page of comments; a busy chapter can have 1000+, and
+  // mounting them all locks the page up. "Load more" extends by `limit` each time.
+  const [visibleCount, setVisibleCount] = useState(limit);
   const [loading, setLoading] = useState(true);
   const [author, setAuthor] = useState("");
   const [content, setContent] = useState("");
@@ -363,7 +366,7 @@ export function CommentsSection({ chapterNumber, limit }: { chapterNumber: numbe
         </div>
       ) : (
         <ul className="space-y-3">
-          {comments.slice(0, limit).map((c) => (
+          {comments.slice(0, visibleCount).map((c) => (
             <li key={c.id} className="gold-card rounded-lg p-4 sm:p-5">
               {/* Header row with avatar */}
               <div className="flex items-start justify-between gap-3 border-b border-gold/15 pb-2">
@@ -443,6 +446,29 @@ export function CommentsSection({ chapterNumber, limit }: { chapterNumber: numbe
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Load more — only ever mounts another `limit` comments */}
+      {comments.length > visibleCount && (
+        <div className="mt-4 flex flex-col items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((v) => v + limit)}
+            className="rounded-full border border-gold/25 bg-gold/10 px-5 py-2 text-xs font-medium text-gold transition-colors hover:bg-gold/20"
+          >
+            عرض {toArabicDigits(Math.min(limit, comments.length - visibleCount))} تعليقاً آخر
+          </button>
+          <p className="text-[10px] text-muted-foreground">
+            معروض {toArabicDigits(visibleCount)} من {toArabicDigits(comments.length)}
+          </p>
+        </div>
+      )}
+
+      {/* All comments shown */}
+      {comments.length > 0 && comments.length <= visibleCount && (
+        <p className="mt-4 text-center text-[10px] text-muted-foreground">
+          كل التعليقات معروضة ({toArabicDigits(comments.length)})
+        </p>
       )}
     </section>
   );

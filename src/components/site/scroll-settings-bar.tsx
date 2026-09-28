@@ -68,10 +68,21 @@ export function ScrollSettingsBar({
   // ─── Scroll tracking ───
   useEffect(() => {
     const handleScroll = () => {
-      const currentY = window.scrollY;
-      const docHeight =
-        document.documentElement.scrollHeight - window.innerHeight;
-      const pct = docHeight > 0 ? (currentY / docHeight) * 100 : 0;
+      /**
+       * Progress is measured to the END OF THE CHAPTER TEXT, not the end of the
+       * document — otherwise a chapter with 1000 comments only ever reaches ~20%
+       * and the bar looks broken. Everything below the text (comments, footer)
+       * counts as 100%.
+       */
+      const content = document.querySelector(chapterContentSelector) as HTMLElement | null;
+      let end: number;
+      if (content) {
+        const top = content.getBoundingClientRect().top + window.scrollY;
+        end = top + content.offsetHeight - window.innerHeight;
+      } else {
+        end = document.documentElement.scrollHeight - window.innerHeight;
+      }
+      const pct = end > 0 ? (window.scrollY / end) * 100 : 100;
       setProgress(Math.min(100, Math.max(0, pct)));
       setBarVisible(true);
       // the settings pill behaves the same way, but reappears a touch sooner
@@ -86,13 +97,15 @@ export function ScrollSettingsBar({
       }, 900);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
     handleScroll();
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
     };
-  }, []);
+  }, [chapterContentSelector]);
 
   // ─── Apply font family + size ───
   useEffect(() => {
@@ -185,24 +198,21 @@ export function ScrollSettingsBar({
 
   return (
     <>
-      {/* ═══ Slim progress bar (auto-hide after 0.5s idle) ═══ */}
+      {/* ═══ Slim progress bar — auto-hides after 0.5s idle ═══ */}
+      {/* No percentage label: the golden line is enough, and once the chapter
+          text is finished the bar fades out instead of sitting at 100%. */}
       <div
         className={cn(
           "fixed left-0 right-0 top-0 z-50 h-1 transition-opacity duration-300",
-          barVisible ? "opacity-100" : "opacity-0"
+          barVisible && progress < 99.5 ? "opacity-100" : "opacity-0"
         )}
-        aria-hidden={!barVisible}
+        aria-hidden
       >
         <div className="absolute inset-0 bg-gold/10" />
         <div
           className="h-full bg-gradient-to-r from-gold/60 via-gold to-gold-soft transition-[width] duration-150"
           style={{ width: `${progress}%` }}
         />
-        {barVisible && progress > 1 && (
-          <div className="absolute left-1/2 top-1 -translate-x-1/2 rounded-b bg-background/80 px-2 py-0.5 text-[9px] font-mono text-gold/70 backdrop-blur-sm">
-            {Math.round(progress)}%
-          </div>
-        )}
       </div>
 
       {/* ═══ Settings pill — LEFT edge, vertically centred ═══ */}
@@ -472,12 +482,10 @@ export function ScrollSettingsBar({
                   </div>
                 </div>
 
-                {/* ─── Footer: progress info ─── */}
+                {/* ─── Footer ─── */}
                 <div className="flex items-center justify-between px-4 py-2 text-[10px] text-muted-foreground">
-                  <span>التقدم: {Math.round(progress)}%</span>
-                  <span className="text-gold/40">
-                    يختفي الشريط تلقائياً بعد التوقف
-                  </span>
+                  <span>يختفي الشريط تلقائياً عند التوقف</span>
+                  <span className="text-gold/40">S يفتح الإعدادات</span>
                 </div>
               </div>
             </div>

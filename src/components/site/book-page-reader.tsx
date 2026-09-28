@@ -113,7 +113,20 @@ export function BookPageReader({
   next: ChapterLink;
   characters?: Character[];
 }) {
-  const [showComments, setShowComments] = useState(true);
+  // Comments stay hidden across chapters once the reader collapses them — some
+  // people read the text only and never want to scroll past 1000 replies.
+  const [showComments, setShowComments] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("reader-show-comments") !== "false";
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("reader-show-comments", String(showComments));
+    } catch {
+      /* private mode */
+    }
+  }, [showComments]);
   // Font family/size are owned by ScrollSettingsBar (which writes them into
   // localStorage and applies them to the content element). This component only
   // mirrors them for its own inline styles, so there is a single source of truth.
@@ -304,15 +317,20 @@ export function BookPageReader({
 
       {/* Comments */}
       <div className="mt-6 flex flex-col items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowComments(!showComments)}
-          className="border-gold/25 text-gold/70 hover:border-gold/50 hover:text-gold"
-        >
-          التعليقات {showComments ? "▲" : "▼"}
-        </Button>
-        {showComments && <CommentsSection chapterNumber={chapter.number} />}
+        <div className="flex flex-col items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowComments(!showComments)}
+            className="border-gold/25 text-gold/70 hover:border-gold/50 hover:text-gold"
+          >
+            التعليقات {showComments ? "▲" : "▼"}
+          </Button>
+          <span className="text-[9px] text-muted-foreground/70">
+            {showComments ? "إخفاء التعليقات (يبقى مخفياً في الفصل التالي)" : "إظهار التعليقات"}
+          </span>
+        </div>
+        {showComments && <CommentsSection chapterNumber={chapter.number} limit={10} />}
 
         <Link href="/chapters">
           <Button variant="outline" size="sm" className="border-gold/25 text-gold/70 hover:border-gold/50 hover:text-gold">
