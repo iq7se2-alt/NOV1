@@ -15,7 +15,6 @@ import { formatShortDate } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
-import { WordOceanToggle } from "./word-ocean";
 import {
   SearchDialog,
   SearchTrigger,
@@ -138,9 +137,6 @@ export function Navbar() {
 
           {/* Language toggle */}
           <LanguageToggle />
-
-          {/* Word Ocean theme toggle */}
-          <WordOceanToggle />
 
           {/* Theme toggle */}
           <ThemeToggle />

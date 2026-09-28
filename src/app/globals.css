@@ -921,56 +921,7 @@
   color: #f0c870;
 }
 
-/* ==================== Word Ocean Theme (بحر الكلمات) ==================== */
-/* Applied to <html class="theme-word-ocean"> */
-.theme-word-ocean {
-  --background: 200 40% 8%;
-  --foreground: 190 30% 85%;
-  --muted: 200 30% 15%;
-  --muted-foreground: 190 20% 60%;
-  --gold: 190 70% 60%;
-  --gold-soft: 190 60% 70%;
-  --purple: 200 50% 55%;
-  --border: 190 30% 25%;
-  --card: 200 35% 12%;
-}
 
-.theme-word-ocean body {
-  background: linear-gradient(180deg, hsl(200 40% 6%) 0%, hsl(195 45% 10%) 50%, hsl(190 40% 8%) 100%);
-  background-attachment: fixed;
-}
-
-.theme-word-ocean .gold-card {
-  background: hsl(200 35% 12% / 0.6);
-  border-color: hsl(190 40% 30% / 0.4);
-  backdrop-filter: blur(8px);
-}
-
-.theme-word-ocean .text-gold {
-  color: hsl(190 70% 60%);
-}
-.theme-word-ocean .text-gold-gradient {
-  background: linear-gradient(135deg, hsl(190 80% 70%), hsl(200 70% 55%), hsl(180 60% 65%));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.theme-word-ocean .border-gold\/20 { border-color: hsl(190 40% 30% / 0.3); }
-.theme-word-ocean .border-gold\/30 { border-color: hsl(190 40% 35% / 0.4); }
-
-/* Cyan gradient text utility */
-.text-cyan-gradient {
-  background: linear-gradient(135deg, #67e8f9, #22d3ee, #06b6d4);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.text-cyan {
-  color: #22d3ee;
-}
-.border-cyan\/20 { border-color: rgba(34, 211, 238, 0.2); }
-.border-cyan\/30 { border-color: rgba(34, 211, 238, 0.3); }
-.bg-cyan\/15 { background-color: rgba(34, 211, 238, 0.15); }
 
 /* ==================== Crystal Ball ==================== */
 .crystal-ball-container {
