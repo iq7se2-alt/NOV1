@@ -18,6 +18,7 @@ import { MapPin, User } from "lucide-react";
 import { toArabicDigits } from "@/lib/format";
 
 type Bucket = { chapter: number; chars: number; newLocs: number; words: number };
+type Filter = "all" | "character" | "location";
 
 type Milestone = {
   chapter: number;
@@ -32,27 +33,40 @@ const GOLD_SOFT = "#e3c878";
 const PINK = "#f472b6";
 
 /** Character density + new locations per 50-chapter bucket. */
-export function MilestoneTimeline({ data }: { data: Bucket[] }) {
+export function MilestoneTimeline({
+  data,
+  filter = "all",
+}: {
+  data: Bucket[];
+  filter?: Filter;
+}) {
   const [metric, setMetric] = useState<"chars" | "newLocs" | "words">("chars");
+
+  // The page-wide filter narrows which series the chart shows.
+  const metrics: Array<["chars" | "newLocs" | "words", string]> =
+    filter === "character"
+      ? [["chars", "شخصيات"]]
+      : filter === "location"
+        ? [["newLocs", "أماكن جديدة"]]
+        : [
+            ["chars", "شخصيات"],
+            ["newLocs", "أماكن جديدة"],
+            ["words", "كلمات"],
+          ];
+  const visibleMetric = metrics.some(([k]) => k === metric) ? metric : metrics[0][0];
 
   return (
     <div className="gold-card rounded-xl p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-naskh text-base font-bold text-gold">كثافة الأحداث عبر الرواية</h2>
         <div className="inline-flex rounded-lg border border-gold/20 bg-muted/40 p-0.5">
-          {(
-            [
-              ["chars", "شخصيات"],
-              ["newLocs", "أماكن جديدة"],
-              ["words", "كلمات"],
-            ] as const
-          ).map(([key, label]) => (
+          {metrics.map(([key, label]) => (
             <button
               key={key}
               onClick={() => setMetric(key)}
               className={
                 "rounded-md px-3 py-1 text-xs transition-colors " +
-                (metric === key ? "bg-gold/20 text-gold" : "text-gold/50 hover:text-gold/80")
+                (visibleMetric === key ? "bg-gold/20 text-gold" : "text-gold/50 hover:text-gold/80")
               }
             >
               {label}
@@ -107,7 +121,7 @@ export function MilestoneTimeline({ data }: { data: Bucket[] }) {
               formatter={(v) => (v === "chars" ? "شخصيات" : v === "newLocs" ? "أماكن جديدة" : "كلمات")}
               wrapperStyle={{ fontSize: 11, color: "rgba(212,168,67,0.7)" }}
             />
-            {metric === "words" ? (
+            {visibleMetric === "words" ? (
               <Bar dataKey="words" fill={GOLD} fillOpacity={0.6} radius={[4, 4, 0, 0]} isAnimationActive={false} />
             ) : (
               <>
@@ -118,7 +132,7 @@ export function MilestoneTimeline({ data }: { data: Bucket[] }) {
                   strokeWidth={2}
                   fill="url(#tlChars)"
                   isAnimationActive={false}
-                  hide={metric !== "chars"}
+                  hide={visibleMetric !== "chars"}
                 />
                 <Area
                   type="monotone"
@@ -127,7 +141,7 @@ export function MilestoneTimeline({ data }: { data: Bucket[] }) {
                   strokeWidth={2}
                   fill="url(#tlLocs)"
                   isAnimationActive={false}
-                  hide={metric !== "newLocs"}
+                  hide={visibleMetric !== "newLocs"}
                 />
               </>
             )}
@@ -141,9 +155,55 @@ export function MilestoneTimeline({ data }: { data: Bucket[] }) {
   );
 }
 
+/** Shared filter bar: "الكل / الشخصيات / الأماكن" — drives chart AND list. */
+export function TimelineFilter({
+  value,
+  onChange,
+  counts,
+}: {
+  value: "all" | "character" | "location";
+  onChange: (v: "all" | "character" | "location") => void;
+  counts?: { all?: number; character?: number; location?: number };
+}) {
+  const opts: Array<[typeof value, string]> = [
+    ["all", "الكل"],
+    ["character", "الشخصيات فقط"],
+    ["location", "الأماكن فقط"],
+  ];
+  return (
+    <div className="mb-6 flex flex-wrap justify-center gap-2">
+      {opts.map(([key, label]) => {
+        const n = counts?.[key];
+        return (
+          <button
+            key={key}
+            onClick={() => onChange(key)}
+            className={
+              "flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium transition-colors " +
+              (value === key
+                ? "border-gold/60 bg-gold/20 text-gold shadow-sm"
+                : "border-gold/20 bg-muted/30 text-gold/60 hover:border-gold/40 hover:text-gold")
+            }
+          >
+            {key === "character" && <User className="h-3.5 w-3.5" />}
+            {key === "location" && <MapPin className="h-3.5 w-3.5" />}
+            {label}
+            {n != null && <span className="text-[10px] text-gold/50">({toArabicDigits(n)})</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Milestone list — first appearance of every main character and every place. */
-export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
-  const [filter, setFilter] = useState<"all" | "character" | "location">("all");
+export function MilestoneList({
+  milestones,
+  filter,
+}: {
+  milestones: Milestone[];
+  filter: "all" | "character" | "location";
+}) {
   const [limit, setLimit] = useState(60);
 
   const rows = milestones.filter((m) => filter === "all" || m.kind === filter);
@@ -151,31 +211,11 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
 
   return (
     <div>
-      <div className="mb-4 flex gap-2">
-        {(
-          [
-            ["all", "الكل"],
-            ["character", "الشخصيات"],
-            ["location", "الأماكن"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => {
-              setFilter(key);
-              setLimit(60);
-            }}
-            className={
-              "rounded-full border px-3 py-1 text-xs transition-colors " +
-              (filter === key
-                ? "border-gold/50 bg-gold/20 text-gold"
-                : "border-gold/20 text-gold/60 hover:text-gold")
-            }
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {rows.length === 0 && (
+        <div className="rounded-lg border border-gold/20 bg-muted/20 py-10 text-center font-naskh text-sm text-muted-foreground">
+          لا أحداث في هذا التصنيف
+        </div>
+      )}
 
       <ol className="relative space-y-2 border-r border-gold/15 pr-4">
         {shown.map((m, i) => (
@@ -215,6 +255,16 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
                   {m.meta ? ` · ${m.meta}` : ""}
                 </span>
               </span>
+              <span
+                className={
+                  "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold " +
+                  (m.kind === "character"
+                    ? "border-gold/30 bg-gold/10 text-gold/80"
+                    : "border-pink/30 bg-pink/10 text-pink/80")
+                }
+              >
+                {m.kind === "character" ? "شخصية" : "مكان"}
+              </span>
             </Link>
           </li>
         ))}
@@ -228,6 +278,42 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
           عرض {toArabicDigits(Math.min(60, rows.length - shown.length))} حدثاً آخر
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * Client shell — owns the page-wide filter so the chart and the milestone list
+ * stay in sync (الكل / الشخصيات فقط / الأماكن فقط).
+ */
+export function MilestoneClient({
+  data,
+  milestones,
+}: {
+  data: Bucket[];
+  milestones: Milestone[];
+}) {
+  const [filter, setFilter] = useState<Filter>("all");
+  const counts = {
+    all: milestones.length,
+    character: milestones.filter((m) => m.kind === "character").length,
+    location: milestones.filter((m) => m.kind === "location").length,
+  };
+
+  return (
+    <div>
+      <TimelineFilter value={filter} onChange={setFilter} counts={counts} />
+      <MilestoneTimeline data={data} filter={filter} />
+      <section className="mt-10">
+        <h2 className="mb-4 text-center font-naskh text-lg font-bold text-gold">
+          {filter === "character"
+            ? "أول ظهور لكل شخصية"
+            : filter === "location"
+              ? "أول ظهور لكل مكان"
+              : "أول ظهور لكل شخصية ومكان"}
+        </h2>
+        <MilestoneList milestones={milestones} filter={filter} />
+      </section>
     </div>
   );
 }
