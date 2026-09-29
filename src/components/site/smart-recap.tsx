@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "@/lib/i18n";
+
 import { useState } from "react";
 import Link from "next/link";
 import { BookOpen, ChevronDown, ChevronUp } from "lucide-react";
@@ -20,6 +22,7 @@ export function SmartRecap({
   prevChapterTitle: string | null;
   recap: string | null;
 }) {
+  const { t, formatNumber } = useLanguage();
   const [dismissed, setDismissed] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -35,14 +38,14 @@ export function SmartRecap({
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-gold" />
             <h3 className="font-naskh text-sm font-bold text-gold">
-              📖 آخر ما حدث في الفصل {prevChapterNumber}:
+              {t("📖 آخر ما حدث في الفصل")} {formatNumber(prevChapterNumber)}:
             </h3>
           </div>
           <button
             onClick={() => setDismissed(true)}
             className="text-xs text-muted-foreground hover:text-foreground"
           >
-            تخطّي ✕
+            {t("تخطّي ✕")}
           </button>
         </div>
 
@@ -64,12 +67,12 @@ export function SmartRecap({
               {expanded ? (
                 <>
                   <ChevronUp className="h-3 w-3" />
-                  عرض أقل
+                  {t("عرض أقل")}
                 </>
               ) : (
                 <>
                   <ChevronDown className="h-3 w-3" />
-                  عرض المزيد
+                  {t("عرض المزيد")}
                 </>
               )}
             </button>
@@ -80,7 +83,7 @@ export function SmartRecap({
               size="sm"
               className="h-7 text-xs text-gold/70 hover:text-gold"
             >
-              اقرأ الفصل السابق كامل ←
+              {t("اقرأ الفصل السابق كامل ←")}
             </Button>
           </Link>
         </div>

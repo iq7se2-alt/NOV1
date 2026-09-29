@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MapPin, ZoomIn, ZoomOut, Maximize2, Compass, ExternalLink } from "lucide-react";
-import { toArabicDigits } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 type Location = {
   id: number;
@@ -23,6 +23,7 @@ type Props = {
 };
 
 export function WorldMapInteractive({ locations }: Props) {
+  const { t, formatNumber } = useLanguage();
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
@@ -91,21 +92,21 @@ export function WorldMapInteractive({ locations }: Props) {
         <button
           onClick={() => setZoom((z) => Math.min(z + 0.2, 2.5))}
           className="flex h-8 w-8 items-center justify-center rounded-md border border-gold/30 bg-black/60 text-gold/80 backdrop-blur-sm transition-colors hover:bg-gold/20 hover:text-gold"
-          title="تكبير"
+          title={t("تكبير")}
         >
           <ZoomIn className="h-4 w-4" />
         </button>
         <button
           onClick={() => setZoom((z) => Math.max(z - 0.2, 0.5))}
           className="flex h-8 w-8 items-center justify-center rounded-md border border-gold/30 bg-black/60 text-gold/80 backdrop-blur-sm transition-colors hover:bg-gold/20 hover:text-gold"
-          title="تصغير"
+          title={t("تصغير")}
         >
           <ZoomOut className="h-4 w-4" />
         </button>
         <button
           onClick={() => setZoom(1)}
           className="flex h-8 w-8 items-center justify-center rounded-md border border-gold/30 bg-black/60 text-gold/80 backdrop-blur-sm transition-colors hover:bg-gold/20 hover:text-gold"
-          title="إعادة ضبط"
+          title={t("إعادة ضبط")}
         >
           <Maximize2 className="h-4 w-4" />
         </button>
@@ -127,7 +128,7 @@ export function WorldMapInteractive({ locations }: Props) {
             onClick={resetFilter}
             className="rounded-md border border-gold/30 bg-black/70 px-3 py-1.5 text-xs text-gold backdrop-blur-sm transition-colors hover:bg-gold/20"
           >
-            إلغاء التحديد ✕
+            {t("إلغاء التحديد ✕")}
           </button>
           {selectedLoc && (
             <button
@@ -135,7 +136,7 @@ export function WorldMapInteractive({ locations }: Props) {
               className="flex items-center gap-1.5 rounded-md border border-gold/50 bg-gold/20 px-3 py-1.5 text-xs text-gold backdrop-blur-sm transition-colors hover:bg-gold/40"
             >
               <ExternalLink className="h-3 w-3" />
-              الفصل {selectedLoc.startChapter}
+              {t("الفصل")} {formatNumber(selectedLoc.startChapter)}
             </button>
           )}
         </div>
@@ -145,10 +146,10 @@ export function WorldMapInteractive({ locations }: Props) {
       {/* ═══ LOCATION COUNT ═══ */}
       <div className="absolute bottom-3 right-3 z-20 flex flex-col gap-1">
         <div className="rounded-md border border-gold/15 bg-black/60 px-2.5 py-1 text-[10px] text-gold/60 backdrop-blur-sm">
-          {locations.length} أماكن
+          {formatNumber(locations.length)} {t("أماكن")}
         </div>
         <div className="rounded-md border border-gold/30 bg-black/70 px-2.5 py-1 text-[10px] text-gold backdrop-blur-sm">
-          ✦ {discoveredIds.size} مكتشفة
+          ✦ {formatNumber(discoveredIds.size)} {t("مكتشفة")}
         </div>
       </div>
 
@@ -479,7 +480,7 @@ export function WorldMapInteractive({ locations }: Props) {
                       className="pointer-events-none"
                       opacity={dimmed ? 0.1 : 0.8}
                     >
-                      ف{loc.startChapter}
+                      {t("ف")}{formatNumber(loc.startChapter)}
                     </text>
                   </>
                 )}
@@ -503,11 +504,11 @@ export function WorldMapInteractive({ locations }: Props) {
           </div>
           <div className="mt-1 flex items-center gap-2 text-[10px] text-gold/60">
             <span>
-              فصل {toArabicDigits(tooltip.loc.startChapter)}
+              {t("فصل")} {formatNumber(tooltip.loc.startChapter)}
             </span>
             {tooltip.loc.endChapter && (
               <span>
-                → {toArabicDigits(tooltip.loc.endChapter)}
+                → {formatNumber(tooltip.loc.endChapter)}
               </span>
             )}
           </div>
@@ -519,7 +520,7 @@ export function WorldMapInteractive({ locations }: Props) {
             </p>
           )}
           <p className="mt-1.5 text-[9px] text-gold/40">
-            اضغط مرة أخرى للانتقال للفصل
+            {t("اضغط مرة أخرى للانتقال للفصل")}
           </p>
         </div>
       )}

@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/i18n";
 
 // Mount detection without setState-in-effect
 const emptySubscribe = () => () => {};
@@ -22,6 +23,7 @@ function getServerSnapshot() {
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const { t } = useLanguage();
   const mounted = useSyncExternalStore(
     emptySubscribe,
     getClientSnapshot,
@@ -50,7 +52,7 @@ const isWater = theme === "water";
           variant="ghost"
           size="icon"
           className="h-9 w-9 text-gold/70 hover:text-gold"
-          aria-label="تبديل المظهر"
+          aria-label={t("تبديل المظهر")}
         >
           {isCinematic ? (
             <Film className="h-4 w-4" />
@@ -72,44 +74,44 @@ const isWater = theme === "water";
       <DropdownMenuContent align="start" className="w-40">
         <DropdownMenuItem onClick={() => setTheme("light")}>
           <Sun className="ml-2 h-4 w-4" />
-          فاتح
+          {t("فاتح")}
           {!isDark && !isSepia && !isCinematic && !isBook && !isWater && theme !== "system" && (
             <span className="mr-auto text-gold">✓</span>
           )}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("sepia")}>
           <BookOpen className="ml-2 h-4 w-4" />
-          أصفر فاتح
+          {t("أصفر فاتح")}
           {isSepia && <span className="mr-auto text-gold">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("dark")}>
           <Moon className="ml-2 h-4 w-4" />
-          داكن
+          {t("داكن")}
           {isDark && <span className="mr-auto text-gold">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("dark-void")}>
           <Eclipse className="ml-2 h-4 w-4" />
-          ظلام دامس
+          {t("ظلام دامس")}
           {isDarkVoid && <span className="mr-auto text-gold">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("water")}>
           <Waves className="ml-2 h-4 w-4" />
-          مائي
+          {t("مائي")}
           {isWater && <span className="mr-auto text-gold">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("cinematic")}>
           <Film className="ml-2 h-4 w-4" />
-          سينمائي
+          {t("سينمائي")}
           {isCinematic && <span className="mr-auto text-gold">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("book")}>
           <BookMarked className="ml-2 h-4 w-4" />
-          كتاب
+          {t("كتاب")}
           {isBook && <span className="mr-auto text-gold">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("system")}>
           <Monitor className="ml-2 h-4 w-4" />
-          النظام
+          {t("النظام")}
           {theme === "system" && <span className="mr-auto text-gold">✓</span>}
         </DropdownMenuItem>
       </DropdownMenuContent>

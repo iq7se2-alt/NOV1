@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LayoutGrid, GitGraph, FileDown, Braces } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n";
 import { CharactersGrid } from "@/components/site/characters-grid";
 import { CharacterNetworkGraph } from "@/components/site/character-network-graph";
 
@@ -50,6 +51,7 @@ export function CharactersNetworkView({
   factions: Map<number, number>;
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>("network");
+  const { t } = useLanguage();
 
   return (
     <div>
@@ -66,7 +68,7 @@ export function CharactersNetworkView({
             )}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
-            بطاقات
+            {t("بطاقات")}
           </button>
           <button
             onClick={() => setViewMode("network")}
@@ -78,25 +80,25 @@ export function CharactersNetworkView({
             )}
           >
             <GitGraph className="h-3.5 w-3.5" />
-            دائرة العلاقات
+            {t("دائرة العلاقات")}
           </button>
         </div>
 
         <a
           href="/api/character-relations?format=csv"
           className="flex items-center gap-1.5 rounded-lg border border-gold/20 bg-muted/40 px-3 py-2 text-xs text-gold/60 transition-colors hover:border-gold/40 hover:text-gold"
-          title="تحميل كل العلاقات كملف CSV يفتح في Excel"
+          title={t("تحميل كل العلاقات كملف CSV يفتح في Excel")}
         >
           <FileDown className="h-3.5 w-3.5" />
-          تصدير CSV
+          {t("تصدير CSV")}
         </a>
         <a
           href="/api/character-relations?format=json"
           className="flex items-center gap-1.5 rounded-lg border border-gold/20 bg-muted/40 px-3 py-2 text-xs text-gold/60 transition-colors hover:border-gold/40 hover:text-gold"
-          title="تحميل شبكة العلاقات كملف JSON"
+          title={t("تحميل شبكة العلاقات كملف JSON")}
         >
           <Braces className="h-3.5 w-3.5" />
-          تصدير JSON
+          {t("تصدير JSON")}
         </a>
       </div>
 

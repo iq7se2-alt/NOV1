@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { toArabicDigits } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 import {
   processContentWithCharacters,
   type Character,
@@ -32,6 +33,7 @@ type ChapterLink = { number: number; title: string } | null;
 
 
 function CharacterMention({ character, name }: { character: Character | undefined; name: string }) {
+  const { t } = useLanguage();
   if (!character) return <span className="font-semibold text-gold">{name}</span>;
   return (
     <Popover>
@@ -60,7 +62,7 @@ function CharacterMention({ character, name }: { character: Character | undefine
         <div className="p-3">
           <div className="flex items-center gap-2">
             <h3 className="font-naskh text-lg font-bold text-foreground">{character.name}</h3>
-            {character.isMain && <span className="rounded bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold">رئيسي</span>}
+            {character.isMain && <span className="rounded bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold">{t("رئيسي")}</span>}
           </div>
           {character.description && <p className="mt-2 text-sm leading-relaxed text-foreground/80">{character.description}</p>}
         </div>
@@ -119,6 +121,7 @@ export function BookPageReader({
     if (typeof window === "undefined") return true;
     return localStorage.getItem("reader-show-comments") !== "false";
   });
+  const { t, formatNumber } = useLanguage();
 
   useEffect(() => {
     try {
@@ -258,7 +261,7 @@ export function BookPageReader({
       <header className="mb-8 text-center">
         <div className="mb-2 inline-flex items-center gap-2 text-xs text-gold/70">
           <span className="h-px w-8 bg-gold/40" />
-          الفصل {toArabicDigits(chapter.number)}
+          {t("الفصل")} {formatNumber(chapter.number)}
           <span className="h-px w-8 bg-gold/40" />
         </div>
         <h1 className="font-naskh text-4xl font-bold text-gold-gradient sm:text-5xl" style={{ fontFamily }}>
@@ -288,7 +291,7 @@ export function BookPageReader({
       {/* End divider */}
       <div className="my-10 text-center">
         <div className="gold-divider mb-4" />
-        <p className="font-naskh text-sm text-gold/60">انتهى الفصل</p>
+        <p className="font-naskh text-sm text-gold/60">{t("انتهى الفصل")}</p>
       </div>
 
       {/* Chapter navigation */}
@@ -297,8 +300,8 @@ export function BookPageReader({
           <Link href={`/chapters/${prev.number}`} className="gold-card flex items-center justify-between rounded-lg p-4">
             <ChevronRight className="h-5 w-5 shrink-0 text-gold/70" />
             <div className="min-w-0 flex-1 text-center">
-              <p className="font-naskh text-xs text-gold/50">الفصل {toArabicDigits(prev.number)}</p>
-              <p className="mt-0.5 truncate font-naskh text-sm text-foreground">{prev.title || `الفصل ${toArabicDigits(prev.number)}`}</p>
+              <p className="font-naskh text-xs text-gold/50">{t("الفصل")} {formatNumber(prev.number)}</p>
+              <p className="mt-0.5 truncate font-naskh text-sm text-foreground">{prev.title || `${t("الفصل")} ${formatNumber(prev.number)}`}</p>
             </div>
             <div className="h-5 w-5 shrink-0" />
           </Link>
@@ -307,8 +310,8 @@ export function BookPageReader({
           <Link href={`/chapters/${next.number}`} className="gold-card flex items-center justify-between rounded-lg p-4">
             <div className="h-5 w-5 shrink-0" />
             <div className="min-w-0 flex-1 text-center">
-              <p className="font-naskh text-xs text-gold/50">الفصل {toArabicDigits(next.number)}</p>
-              <p className="mt-0.5 truncate font-naskh text-sm text-foreground">{next.title || `الفصل ${toArabicDigits(next.number)}`}</p>
+              <p className="font-naskh text-xs text-gold/50">{t("الفصل")} {formatNumber(next.number)}</p>
+              <p className="mt-0.5 truncate font-naskh text-sm text-foreground">{next.title || `${t("الفصل")} ${formatNumber(next.number)}`}</p>
             </div>
             <ChevronLeft className="h-5 w-5 shrink-0 text-gold/70" />
           </Link>
@@ -324,10 +327,10 @@ export function BookPageReader({
             onClick={() => setShowComments(!showComments)}
             className="border-gold/25 text-gold/70 hover:border-gold/50 hover:text-gold"
           >
-            التعليقات {showComments ? "▲" : "▼"}
+            {t("التعليقات")} {showComments ? "▲" : "▼"}
           </Button>
           <span className="text-[9px] text-muted-foreground/70">
-            {showComments ? "إخفاء التعليقات (يبقى مخفياً في الفصل التالي)" : "إظهار التعليقات"}
+            {t(showComments ? "إخفاء التعليقات (يبقى مخفياً في الفصل التالي)" : "إظهار التعليقات")}
           </span>
         </div>
         {showComments && <CommentsSection chapterNumber={chapter.number} limit={10} />}
@@ -335,7 +338,7 @@ export function BookPageReader({
         <Link href="/chapters">
           <Button variant="outline" size="sm" className="border-gold/25 text-gold/70 hover:border-gold/50 hover:text-gold">
             <ListOrdered className="ml-1.5 h-4 w-4" />
-            الفهرس
+            {t("الفهرس")}
           </Button>
         </Link>
       </div>

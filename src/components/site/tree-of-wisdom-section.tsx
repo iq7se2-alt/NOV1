@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "@/lib/i18n";
+
 import { useState, useEffect } from "react";
 import { TreeOfWisdom } from "./tree-of-wisdom";
 import { Sparkles } from "lucide-react";
@@ -9,6 +11,7 @@ import { Sparkles } from "lucide-react";
  * Reads reading progress from localStorage and passes to the 3D tree.
  */
 export function TreeOfWisdomSection() {
+  const { t } = useLanguage();
   const [readCount, setReadCount] = useState(0);
   const [mounted, setMounted] = useState(false);
 
@@ -49,14 +52,15 @@ export function TreeOfWisdomSection() {
         <div className="mb-8 text-center">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-1 text-xs text-gold/80">
             <Sparkles className="h-3.5 w-3.5" />
-            شجرة الحكمة
+            {t("شجرة الحكمة")}
           </div>
           <h2 className="font-naskh text-3xl font-bold text-gold-gradient sm:text-4xl">
-            ازرع شجرتك بالقراءة
+            {t("ازرع شجرتك بالقراءة")}
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
-            كل فصل تقرأه يتركب قطعة ذهبية في شجرتك. كلما قرأت أكثر، نبت الجذع،
-            تفرعت الأغصان، وتفتحت ثمار الحكمة.
+            {t(
+              "كل فصل تقرأه يتركب قطعة ذهبية في شجرتك. كلما قرأت أكثر، نبت الجذع، تفرعت الأغصان، وتفتحت ثمار الحكمة.",
+            )}
           </p>
         </div>
 
@@ -64,26 +68,26 @@ export function TreeOfWisdomSection() {
           <TreeOfWisdom readCount={readCount} />
         ) : (
           <div className="flex h-[400px] items-center justify-center rounded-xl border border-gold/20 bg-muted">
-            <div className="animate-pulse text-gold/50">يحمّل...</div>
+            <div className="animate-pulse text-gold/50">{t("يحمّل...")}</div>
           </div>
         )}
 
         <div className="mt-6 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
           <div className="rounded-lg border border-gold/15 bg-muted/50 p-3">
-            <div className="font-bold text-gold">{readCount < 50 ? "بذرة" : readCount < 200 ? "جذع" : readCount < 500 ? "أوراق" : "ثمار"}</div>
-            <div className="text-[10px] text-muted-foreground">المرحلة الحالية</div>
+            <div className="font-bold text-gold">{readCount < 50 ? t("بذرة") : readCount < 200 ? t("جذع") : readCount < 500 ? t("أوراق") : t("ثمار")}</div>
+            <div className="text-[10px] text-muted-foreground">{t("المرحلة الحالية")}</div>
           </div>
           <div className="rounded-lg border border-gold/15 bg-muted/50 p-3">
             <div className="font-bold text-gold">{readCount}</div>
-            <div className="text-[10px] text-muted-foreground">فصل مقروء</div>
+            <div className="text-[10px] text-muted-foreground">{t("فصل مقروء")}</div>
           </div>
           <div className="rounded-lg border border-gold/15 bg-muted/50 p-3">
             <div className="font-bold text-gold">{Math.floor(readCount / 100)}</div>
-            <div className="text-[10px] text-muted-foreground">ثمرة حكمة</div>
+            <div className="text-[10px] text-muted-foreground">{t("ثمرة حكمة")}</div>
           </div>
           <div className="rounded-lg border border-gold/15 bg-muted/50 p-3">
             <div className="font-bold text-gold">{2340 - readCount}</div>
-            <div className="text-[10px] text-muted-foreground">فصل متبقٍ</div>
+            <div className="text-[10px] text-muted-foreground">{t("فصل متبقٍ")}</div>
           </div>
         </div>
       </div>

@@ -20,7 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { highlightSearchTerm } from "@/lib/search-utils";
-import { toArabicDigits } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 type Match = { paragraphIndex: number; snippet: string };
 type SearchResult = {
@@ -74,6 +74,7 @@ function useDebounce<T>(value: T, delay: number): T {
  * Mounted only while the Dialog is open. Owns its own search state.
  */
 function SearchDialogContent({ onClose }: { onClose: () => void }) {
+  const { t, formatNumber } = useLanguage();
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 400);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -154,9 +155,9 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
         inputRef.current?.focus();
       }}
     >
-      <DialogTitle className="sr-only">بحث في المحتوى</DialogTitle>
+      <DialogTitle className="sr-only">{t("بحث في المحتوى")}</DialogTitle>
       <DialogDescription className="sr-only">
-        ابحث في محتوى الرواية
+        {t("ابحث في محتوى الرواية")}
       </DialogDescription>
 
       {/* Search input row */}
@@ -167,8 +168,8 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="ابحث في محتوى الرواية..."
-          aria-label="بحث"
+          placeholder={t("ابحث في محتوى الرواية...")}
+          aria-label={t("بحث")}
           className="font-naskh min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
         />
         {isLoading && (
@@ -182,7 +183,7 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
         {entities.length > 0 && (
           <div className="mb-4">
             <p className="mb-2 px-1 text-[10px] font-bold text-gold/70">
-              شخصيات وأماكن
+              {t("شخصيات وأماكن")}
             </p>
             <ul className="grid gap-2 sm:grid-cols-2">
               {entities.map((e) => (
@@ -226,9 +227,9 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
                         {e.name}
                       </span>
                       <span className="block text-[9px] text-muted-foreground">
-                        {e.type === "character" ? "شخصية" : "مكان"}
-                        {e.mentionCount > 0 ? ` · ${toArabicDigits(e.mentionCount)} ذكر` : ""}
-                        {e.chapter ? ` · الفصل ${toArabicDigits(e.chapter)}` : ""}
+                        {e.type === "character" ? t("شخصية") : t("مكان")}
+                        {e.mentionCount > 0 ? ` · ${formatNumber(e.mentionCount)} ${t("ذكر")}` : ""}
+                        {e.chapter ? ` · ${t("الفصل")} ${formatNumber(e.chapter)}` : ""}
                       </span>
                     </span>
                   </Link>
@@ -240,17 +241,17 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
 
         {showEmptyHint ? (
           <div className="py-12 text-center font-naskh text-sm text-muted-foreground">
-            ابدأ الكتابة للبحث
+            {t("ابدأ الكتابة للبحث")}
           </div>
         ) : showNoResults ? (
           <div className="py-12 text-center font-naskh text-sm text-muted-foreground">
-            لا توجد نتائج
+            {t("لا توجد نتائج")}
           </div>
         ) : results.length === 0 ? (
           // Loading state with no prior results
           <div className="flex items-center justify-center gap-2 py-12 font-naskh text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin text-gold/60" />
-            جارٍ البحث...
+            {t("جارٍ البحث...")}
           </div>
         ) : (
           <>
@@ -258,11 +259,11 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
           {totalMatches > 0 && (
             <div className="mb-3 rounded-md border border-gold/20 bg-gold/5 px-3 py-2 text-center">
               <span className="font-naskh text-sm text-foreground/80">
-                تم العثور على{" "}
-                <span className="font-bold text-gold">{toArabicDigits(totalMatches)}</span>{" "}
-                ذكر لكلمة «<span className="font-bold text-gold">{resultQuery}</span>» في{" "}
-                <span className="font-bold text-gold">{toArabicDigits(results.length)}</span>{" "}
-                فصل
+                {t("تم العثور على")} {" "}
+                <span className="font-bold text-gold">{formatNumber(totalMatches)}</span>{" "}
+                {t("ذكر لكلمة")} «<span className="font-bold text-gold">{resultQuery}</span>» {t("في")} {" "}
+                <span className="font-bold text-gold">{formatNumber(results.length)}</span>{" "}
+                {t("فصل")}
               </span>
             </div>
           )}
@@ -282,7 +283,7 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
                     >
                       <div className="flex items-baseline gap-2">
                         <span className="shrink-0 text-xs text-gold/60">
-                          الفصل {toArabicDigits(r.chapterNumber)}
+                          {t("الفصل")} {formatNumber(r.chapterNumber)}
                         </span>
                         <span className="truncate font-naskh text-sm font-bold text-gold">
                           {r.chapterTitle}
@@ -293,7 +294,7 @@ function SearchDialogContent({ onClose }: { onClose: () => void }) {
                       variant="outline"
                       className="shrink-0 border-gold/30 bg-gold/10 text-gold"
                     >
-                      {toArabicDigits(r.matchCount)} نتيجة
+                      {formatNumber(r.matchCount)} {t("نتيجة")}
                     </Badge>
                   </div>
 
@@ -361,11 +362,12 @@ export function SearchDialog({ children }: { children?: ReactNode }) {
  */
 export function SearchTrigger({ className }: { className?: string }) {
   const ctx = useContext(SearchDialogContext);
+  const { t } = useLanguage();
   return (
     <button
       type="button"
       onClick={() => ctx?.setOpen(true)}
-      aria-label="بحث"
+      aria-label={t("بحث")}
       className={cn(
         "inline-flex h-10 w-10 items-center justify-center rounded-md border border-gold/25 text-gold/80 transition-colors hover:border-gold/50 hover:bg-gold/10 hover:text-gold",
         className

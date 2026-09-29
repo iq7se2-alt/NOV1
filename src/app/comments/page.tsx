@@ -5,7 +5,8 @@ import Link from "next/link";
 import { MessageSquare, Search, BookOpen, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { formatArabicDate, formatTimeAgo, toArabicDigits } from "@/lib/format";
+import { formatArabicDate, formatTimeAgo } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 type CommentItem = {
   id: number;
@@ -25,6 +26,7 @@ type Response = {
 };
 
 export default function CommentsPage() {
+  const { t, formatNumber } = useLanguage();
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [chapterFilter, setChapterFilter] = useState("");
@@ -63,13 +65,13 @@ export default function CommentsPage() {
       <div className="mb-8 text-center">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-1 text-xs text-gold/80">
           <MessageSquare className="h-3.5 w-3.5" />
-          تعليقات القراء
+          {t("تعليقات القراء")}
         </div>
         <h1 className="font-naskh text-4xl font-bold text-gold-gradient">
-          التعليقات
+          {t("التعليقات")}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {data ? `${toArabicDigits(data.total)} تعليق` : "—"}
+          {data ? `${formatNumber(data.total)} ${t("تعليق")}` : "…"}
         </p>
       </div>
 
@@ -80,7 +82,7 @@ export default function CommentsPage() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="ابحث في التعليقات أو الأسماء..."
+            placeholder={t("ابحث في التعليقات أو الأسماء...")}
             className="border-gold/25 bg-muted pr-10 font-naskh"
           />
         </div>
@@ -88,7 +90,7 @@ export default function CommentsPage() {
           type="number"
           value={chapterFilter}
           onChange={(e) => { setChapterFilter(e.target.value); setPage(1); }}
-          placeholder="رقم الفصل"
+          placeholder={t("رقم الفصل")}
           min={1}
           className="w-28 rounded-lg border border-gold/25 bg-muted px-3 font-naskh text-center text-sm text-foreground placeholder:text-muted-foreground focus:border-gold/50 focus:ring-2 focus:ring-gold/20"
         />
@@ -109,7 +111,7 @@ export default function CommentsPage() {
         <div className="gold-card rounded-lg p-12 text-center">
           <MessageSquare className="mx-auto mb-4 h-12 w-12 text-gold/30" />
           <p className="font-naskh text-lg text-muted-foreground">
-            {debouncedQ || chapterFilter ? "لا توجد نتائج" : "لا توجد تعليقات بعد"}
+            {debouncedQ || chapterFilter ? t("لا توجد نتائج") : t("لا توجد تعليقات بعد")}
           </p>
         </div>
       ) : (
@@ -129,7 +131,7 @@ export default function CommentsPage() {
                       className="flex items-center gap-1 text-gold/70 hover:text-gold"
                     >
                       <BookOpen className="h-3 w-3" />
-                      فصل {toArabicDigits(c.chapter.number)} — {c.chapter.title}
+                      {t("فصل")} {formatNumber(c.chapter.number)} — {c.chapter.title}
                     </Link>
                   </div>
                 </div>
@@ -151,12 +153,12 @@ export default function CommentsPage() {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             className="border-gold/25 text-gold/80 hover:border-gold/50 hover:text-gold disabled:opacity-30"
           >
-            <ChevronRight className="ml-1 h-4 w-4" /> السابق
+            <ChevronRight className="ml-1 h-4 w-4" /> {t("السابق")}
           </Button>
           <div className="flex items-center gap-1 px-2">
-            <span className="font-mono text-sm text-gold">{toArabicDigits(page)}</span>
+            <span className="font-mono text-sm text-gold">{formatNumber(page)}</span>
             <span className="text-muted-foreground">/</span>
-            <span className="font-mono text-sm text-muted-foreground">{toArabicDigits(totalPages)}</span>
+            <span className="font-mono text-sm text-muted-foreground">{formatNumber(totalPages)}</span>
           </div>
           <Button
             variant="outline" size="sm"
@@ -164,7 +166,7 @@ export default function CommentsPage() {
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             className="border-gold/25 text-gold/80 hover:border-gold/50 hover:text-gold disabled:opacity-30"
           >
-            التالي <ChevronLeft className="mr-1 h-4 w-4" />
+            {t("التالي")} <ChevronLeft className="mr-1 h-4 w-4" />
           </Button>
         </div>
       )}

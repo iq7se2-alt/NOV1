@@ -16,6 +16,7 @@ import {
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n";
 import { AmbientSounds } from "./ambient-sounds";
 import { FONTS, DEFAULT_FONT, FONT_KEY_STORAGE, FONT_SIZE_STORAGE, isValidFont, type FontKey } from "@/lib/fonts";
 
@@ -57,6 +58,8 @@ export function ScrollSettingsBar({
   });
   const [autoScroll, setAutoScroll] = useState(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState(1);
+  const { t, formatNumber, lang } = useLanguage();
+  const fontName = (f: (typeof FONTS)[number]) => (lang === "en" ? f.labelEn : f.label);
   const [highlightChars, setHighlightChars] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("reader-highlight-chars") === "true";
@@ -193,8 +196,9 @@ export function ScrollSettingsBar({
 
   const [fontSearch, setFontSearch] = useState("");
 
-  const filteredFonts = FONTS.filter(f =>
-    !fontSearch.trim() || f.label.includes(fontSearch.trim()) || f.key.toLowerCase().includes(fontSearch.trim().toLowerCase())
+  const q = fontSearch.trim().toLowerCase();
+  const filteredFonts = FONTS.filter(
+    (f) => !q || f.label.includes(q) || f.labelEn.toLowerCase().includes(q) || f.key.toLowerCase().includes(q),
   );
 
   return (
@@ -236,8 +240,8 @@ export function ScrollSettingsBar({
                 ? "bg-gold/15 text-gold"
                 : "text-gold/60 hover:bg-gold/10 hover:text-gold"
             )}
-            title="إعدادات القراءة (اضغط S)"
-            aria-label="إعدادات القراءة"
+            title={t("إعدادات القراءة (اضغط S)")}
+            aria-label={t("إعدادات القراءة")}
           >
             <Settings2 className="h-4 w-4" />
           </button>
@@ -276,7 +280,7 @@ export function ScrollSettingsBar({
                 <div className="flex items-center gap-2">
                   <Settings2 className="h-3.5 w-3.5 text-gold" />
                   <h3 className="font-naskh text-sm font-bold text-gold">
-                    إعدادات القراءة
+                    {t("إعدادات القراءة")}
                   </h3>
                 </div>
                 <button
@@ -293,9 +297,9 @@ export function ScrollSettingsBar({
                 <div className="px-4 py-3">
                   <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gold/50">
                     <Type className="h-3 w-3" />
-                    الخط والحجم
+                    {t("الخط والحجم")}
                     <span className="mr-auto text-[9px] text-muted-foreground/60">
-                      {filteredFonts.length} خط
+                      {formatNumber(filteredFonts.length)} {t("خط")}
                     </span>
                   </div>
                   {/* Font search */}
@@ -305,7 +309,7 @@ export function ScrollSettingsBar({
                       type="text"
                       value={fontSearch}
                       onChange={(e) => setFontSearch(e.target.value)}
-                      placeholder="ابحث عن خط..."
+                      placeholder={t("ابحث عن خط...")}
                       className="w-full rounded-md border border-gold/20 bg-muted/40 py-1 pr-7 pl-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:border-gold/40 focus:outline-none"
                     />
                   </div>
@@ -322,23 +326,23 @@ export function ScrollSettingsBar({
                               ? "border-gold/60 bg-gold/15 text-gold ring-1 ring-gold/30"
                               : "border-gold/15 text-muted-foreground hover:border-gold/30 hover:text-gold/80"
                           )}
-                          title={`${font.label} (${font.category})`}
+                          title={`${fontName(font)} (${t(font.category)})`}
                         >
                           <span
                             className="text-lg leading-none"
                             style={{ fontFamily: font.cssVar }}
                           >
-                            أبجد
+                            {t("أبجد")}
                           </span>
-                          <span className="text-[9px] font-bold">{font.label}</span>
-                          <span className="text-[7px] text-muted-foreground/60">{font.category}</span>
+                          <span className="text-[9px] font-bold">{fontName(font)}</span>
+                          <span className="text-[7px] text-muted-foreground/60">{t(font.category)}</span>
                         </button>
                       ))}
                     </div>
                   </div>
                   {/* Font size */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground">الحجم</span>
+                    <span className="text-[10px] text-muted-foreground">{t("الحجم")}</span>
                     <div className="flex flex-1 items-center gap-1 rounded-lg border border-gold/20 bg-muted/40 px-1.5 py-1">
                       <button
                         onClick={() => toggleFont(-1)}
@@ -363,7 +367,7 @@ export function ScrollSettingsBar({
                 <div className="px-4 py-3">
                   <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gold/50">
                     <Gauge className="h-3 w-3" />
-                    التمرير التلقائي
+                    {t("التمرير التلقائي")}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -380,12 +384,12 @@ export function ScrollSettingsBar({
                       ) : (
                         <Play className="h-3.5 w-3.5" />
                       )}
-                      <span>سكرول تلقائي</span>
+                      <span>{t("سكرول تلقائي")}</span>
                     </button>
                     {autoScroll && (
                       <div className="flex flex-1 items-center gap-2">
                         <span className="text-[10px] text-muted-foreground">
-                          السرعة
+                          {t("السرعة")}
                         </span>
                         <input
                           type="range"
@@ -410,7 +414,7 @@ export function ScrollSettingsBar({
                 <div className="px-4 py-3">
                   <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gold/50">
                     <Users className="h-3 w-3" />
-                    إبراز الشخصيات
+                    {t("إبراز الشخصيات")}
                   </div>
                   <div className="space-y-1.5">
                     <button
@@ -428,7 +432,7 @@ export function ScrollSettingsBar({
                         ) : (
                           <EyeOff className="h-3.5 w-3.5" />
                         )}
-                        إظهار أسماء الشخصيات
+                        {t("إظهار أسماء الشخصيات")}
                       </span>
                       <span
                         className={cn(
@@ -455,8 +459,8 @@ export function ScrollSettingsBar({
 
                 {/* ─── Footer ─── */}
                 <div className="flex items-center justify-between px-4 py-2 text-[10px] text-muted-foreground">
-                  <span>يختفي الشريط تلقائياً عند التوقف</span>
-                  <span className="text-gold/40">S يفتح الإعدادات</span>
+                  <span>{t("يختفي الشريط تلقائياً عند التوقف")}</span>
+                  <span className="text-gold/40">{t("S يفتح الإعدادات")}</span>
                 </div>
               </div>
             </div>

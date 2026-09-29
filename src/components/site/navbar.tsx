@@ -166,7 +166,7 @@ export function Navbar() {
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <button
-                aria-label="القائمة"
+                aria-label={t("القائمة")}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gold/25 text-gold/80"
               >
                 {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -291,7 +291,7 @@ function NotificationsBell() {
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
-          aria-label="الإشعارات"
+          aria-label={t("الإشعارات")}
           className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-gold/70 transition-colors hover:bg-white/5 hover:text-gold"
         >
           <Bell className="h-4 w-4" />

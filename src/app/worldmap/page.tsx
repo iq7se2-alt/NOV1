@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toArabicDigits } from "@/lib/format";
 import { WorldMapInteractive } from "@/components/site/world-map-interactive";
+import { WorldMapHeader, WorldMapEmpty } from "@/components/site/world-map-page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -20,37 +21,10 @@ export default async function WorldMapPage() {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6">
       {/* ═══ HEADER ═══ */}
-      <div className="mb-10 text-center">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-1 text-xs text-gold/80">
-          <Compass className="h-3.5 w-3.5" />
-          عالم الرواية
-        </div>
-        <h1 className="font-naskh text-4xl font-bold text-gold-gradient sm:text-5xl">
-          خريطة العالم
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {locations.length > 0
-            ? `${toArabicDigits(locations.length)} مكان`
-            : "لم تُضف أماكن بعد"}
-        </p>
-      </div>
+      <WorldMapHeader locationCount={locations.length} />
 
       {locations.length === 0 ? (
-        <div className="gold-card animate-float-in rounded-lg p-12 text-center">
-          <MapPin className="mx-auto mb-4 h-12 w-12 text-gold/30" />
-          <p className="font-naskh text-lg text-muted-foreground">
-            لا توجد أماكن بعد.
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground/70">
-            يمكن إضافة الأماكن من لوحة الإدارة.
-          </p>
-          <Link href="/admin" className="mt-6 inline-block">
-            <Button className="bg-gold text-[#1a0a00] hover:bg-gold-soft">
-              الذهاب للإدارة
-              <ArrowLeft className="mr-2 h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
+        <WorldMapEmpty />
       ) : (
         <>
           {/* ═══ INTERACTIVE MAP ═══ */}

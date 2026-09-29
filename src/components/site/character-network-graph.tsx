@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useId, useEffect } from "react";
-import { toArabicDigits } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 import { FACTION_COLORS, REL_STYLES, getRelStyle } from "./network/constants";
 import { computeLayout } from "./network/layout";
 import {
@@ -21,6 +21,7 @@ type Props = {
 
 export function CharacterNetworkGraph({ characters, relations }: Props) {
   const uid = useId();
+  const { t, formatNumber } = useLanguage();
   const glowId = `glow-${uid}`;
   const coreId = `coreGrad-${uid}`;
   const ringGradId = `ringGrad-${uid}`;
@@ -225,7 +226,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
           }}
           onMouseEnter={(e) => {
             setHoveredId(ch.id);
-            showTooltip(e, ch.name, `${toArabicDigits(ch.appearanceCount)} ظهور`);
+            showTooltip(e, ch.name, `${formatNumber(ch.appearanceCount)} ${t("ظهور")}`);
           }}
           onMouseLeave={() => { setHoveredId(null); hideTooltip(); }}
           opacity={dimmed ? 0.12 : 1}
@@ -326,7 +327,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
       {/* ═══ RESET ═══ */}
       {hasFilter && (
         <button onClick={reset} className="absolute left-3 bottom-3 z-20 rounded-md border border-gold/30 bg-black/70 px-3 py-1.5 text-xs text-gold backdrop-blur-sm transition-colors hover:bg-gold/20">
-          إلغاء التحديد ✕
+          {t("إلغاء التحديد ✕")}
         </button>
       )}
 
@@ -335,11 +336,11 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
         <button
           onClick={() => setNodeLimit((n) => n + 300)}
           className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-gold/30 bg-black/75 px-4 py-1.5 text-xs text-gold backdrop-blur-sm transition-colors hover:bg-gold/20"
-          title="عرض المزيد من الشخصيات في الدائرة"
+          title={t("عرض المزيد من الشخصيات في الدائرة")}
         >
-          عرض {toArabicDigits(Math.min(hiddenCount, 300))} شخصية أخرى
+          {t("عرض")} {formatNumber(Math.min(hiddenCount, 300))} {t("شخصية أخرى")}
           <span className="mr-1.5 text-gold/40">
-            ({toArabicDigits(renderedChars.length)} / {toArabicDigits(characters.length)})
+            ({formatNumber(renderedChars.length)} / {formatNumber(characters.length)})
           </span>
         </button>
       )}
@@ -368,7 +369,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
               <div className="absolute inset-0 animate-spin rounded-full border-2 border-gold/10 border-t-gold" style={{ animationDuration: "1.4s" }} />
               <div className="absolute inset-3 animate-spin rounded-full border border-gold/20 border-b-gold/60" style={{ animationDirection: "reverse", animationDuration: "2s" }} />
             </div>
-            <p className="font-naskh text-sm text-gold/50">جارٍ رسم مجرة الشخصيات…</p>
+            <p className="font-naskh text-sm text-gold/50">{t("جارٍ رسم مجرة الشخصيات…")}</p>
           </div>
         ) : (
         <svg viewBox="0 0 100 100" className={"aspect-square w-full " + (grabbing ? "cursor-grabbing" : "cursor-grab")} style={{ minHeight: "520px", maxHeight: "72vh" }}>
@@ -404,7 +405,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
             const half = (Math.PI / Math.max(factionLeaders.mains.length, 1)) * 0.85;
             return (
               <g key={m.id} style={{ cursor: "pointer" }} onClick={() => setActiveFaction(isActive ? null : m.id)}
-                onMouseEnter={(e) => showTooltip(e, `عائلة ${m.name}`, `${toArabicDigits(factionCounts.get(m.id) || 0)} شخصية تتبعها`)}
+                onMouseEnter={(e) => showTooltip(e, `${t("عائلة")} ${m.name}`, `${formatNumber(factionCounts.get(m.id) || 0)} ${t("شخصية تتبعها")}`)}
                 onMouseLeave={hideTooltip}>
                 <path
                   d={`M50,50 L${50 + 49 * Math.cos(angle - half)},${50 + 49 * Math.sin(angle - half)} A49,49 0 0,0 ${50 + 49 * Math.cos(angle + half)},${50 + 49 * Math.sin(angle + half)} Z`}
@@ -480,7 +481,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
                 }}
                 onMouseEnter={(e) => {
                   setHoveredId(ch.id);
-                  showTooltip(e, ch.name, `${toArabicDigits(ch.appearanceCount)} ظهور` + (ch.isMain && !isProtag ? ` · قائد عائلة` : "") + (isProtag ? " · البطل" : ""));
+                  showTooltip(e, ch.name, `${formatNumber(ch.appearanceCount)} ${t("ظهور")}` + (ch.isMain && !isProtag ? ` · ${t("قائد عائلة")}` : "") + (isProtag ? ` · ${t("البطل")}` : ""));
                 }}
                 onMouseLeave={() => { setHoveredId(null); hideTooltip(); }}
                 opacity={dimmed ? 0.12 : 1}>
@@ -546,7 +547,7 @@ export function CharacterNetworkGraph({ characters, relations }: Props) {
                 }}
                 onMouseEnter={(e) => {
                   setHoveredId(ch.id);
-                  showTooltip(e, ch.name, `${toArabicDigits(ch.appearanceCount)} ظهور`);
+                  showTooltip(e, ch.name, `${formatNumber(ch.appearanceCount)} ${t("ظهور")}`);
                 }}
                 onMouseLeave={() => { setHoveredId(null); hideTooltip(); }}>
                 {(isSelected || isHovered) && (

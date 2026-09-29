@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { toArabicDigits } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 type Point = { number: number; views: number; comments: number };
 
@@ -23,6 +24,8 @@ const GOLD_SOFT = "#e3c878";
 export function TopChaptersChart({ data }: { data: Point[] }) {
   const [metric, setMetric] = useState<"views" | "comments">("views");
   const router = useRouter();
+  const { t, formatNumber, lang } = useLanguage();
+  const n = (v: unknown) => (lang === "ar" ? toArabicDigits(v as number) : String(v));
 
   const rows = [...data].sort((a, b) => b[metric] - a[metric]);
   const max = Math.max(1, ...rows.map((r) => r[metric]));
@@ -30,7 +33,7 @@ export function TopChaptersChart({ data }: { data: Point[] }) {
   return (
     <div className="gold-card rounded-xl p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="font-naskh text-base font-bold text-gold">رسم بياني</h2>
+        <h2 className="font-naskh text-base font-bold text-gold">{t("رسم بياني")}</h2>
         <div className="inline-flex rounded-lg border border-gold/20 bg-muted/40 p-0.5">
           <button
             onClick={() => setMetric("views")}
@@ -39,7 +42,7 @@ export function TopChaptersChart({ data }: { data: Point[] }) {
               (metric === "views" ? "bg-gold/20 text-gold" : "text-gold/50 hover:text-gold/80")
             }
           >
-            المشاهدات
+            {t("المشاهدات")}
           </button>
           <button
             onClick={() => setMetric("comments")}
@@ -48,7 +51,7 @@ export function TopChaptersChart({ data }: { data: Point[] }) {
               (metric === "comments" ? "bg-gold/20 text-gold" : "text-gold/50 hover:text-gold/80")
             }
           >
-            التعليقات
+            {t("التعليقات")}
           </button>
         </div>
       </div>
@@ -68,14 +71,14 @@ export function TopChaptersChart({ data }: { data: Point[] }) {
               tick={{ fill: "rgba(212,168,67,0.65)", fontSize: 10 }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v: number) => toArabicDigits(v)}
+              tickFormatter={(v: number) => n(v)}
             />
             <YAxis
               tick={{ fill: "rgba(212,168,67,0.5)", fontSize: 10 }}
               tickLine={false}
               axisLine={false}
               width={38}
-              tickFormatter={(v: number) => toArabicDigits(v)}
+              tickFormatter={(v: number) => n(v)}
             />
             <Tooltip
               cursor={{ fill: "rgba(212,168,67,0.08)" }}
@@ -86,10 +89,10 @@ export function TopChaptersChart({ data }: { data: Point[] }) {
                 color: "#e3c878",
                 fontSize: 12,
               }}
-              labelFormatter={(v) => `الفصل ${toArabicDigits(Number(v))}`}
+              labelFormatter={(v) => `${t("الفصل")} ${n(Number(v))}`}
               formatter={(value: number, name) => [
-                toArabicDigits(value),
-                name === "views" ? "مشاهدة" : "تعليق",
+                n(value),
+                t(name === "views" ? "مشاهدة" : "تعليق"),
               ]}
             />
             <Bar
@@ -100,7 +103,7 @@ export function TopChaptersChart({ data }: { data: Point[] }) {
                 position: "top",
                 fill: "rgba(212,168,67,0.8)",
                 fontSize: 10,
-                formatter: (v: number) => toArabicDigits(v),
+                formatter: (v: number) => n(v),
               }}
             >
               {rows.map((r, i) => (
@@ -118,7 +121,7 @@ export function TopChaptersChart({ data }: { data: Point[] }) {
       </div>
 
       <p className="mt-2 text-center text-[10px] text-muted-foreground">
-        اضغط على أي عمود لفتح الفصل
+        {t("اضغط على أي عمود لفتح الفصل")}
       </p>
     </div>
   );

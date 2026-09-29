@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { Search, X, Loader2, Hash, BookOpen, ChevronLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { toArabicDigits } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type MatchResult = {
@@ -16,6 +16,7 @@ type MatchResult = {
 };
 
 export function SearchClient() {
+  const { t, formatNumber } = useLanguage();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<MatchResult[]>([]);
   const [total, setTotal] = useState(0);
@@ -53,7 +54,7 @@ export function SearchClient() {
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gold/50" />
             <Input value={q} onChange={e => setQ(e.target.value)}
-              placeholder="ابحث عن كلمة أو جملة في كل الفصول..."
+              placeholder={t("ابحث عن كلمة أو جملة في كل الفصول...")}
               className="border-gold/25 bg-muted pr-10 font-naskh text-sm h-11"
               autoFocus />
             {q && (
@@ -66,7 +67,7 @@ export function SearchClient() {
           <button type="submit" disabled={loading || q.trim().length < 2}
             className="shrink-0 flex items-center gap-2 rounded-lg bg-gold px-6 py-2 text-sm font-bold text-[#1a0a00] hover:bg-gold-soft transition-colors disabled:opacity-40">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            بحث
+            {t("بحث")}
           </button>
         </div>
       </form>
@@ -74,7 +75,7 @@ export function SearchClient() {
       {loading && (
         <div className="flex flex-col items-center gap-3 py-20">
           <Loader2 className="h-8 w-8 animate-spin text-gold/60" />
-          <p className="text-sm text-muted-foreground">جار البحث في {toArabicDigits(2354)} فصل...</p>
+          <p className="text-sm text-muted-foreground">جار البحث في {formatNumber(2354)} فصل...</p>
         </div>
       )}
 
@@ -89,8 +90,8 @@ export function SearchClient() {
       {!loading && results.length > 0 && (
         <>
           <div className="mb-6 text-sm text-muted-foreground text-center">
-            <span className="font-bold text-gold">{toArabicDigits(total)}</span> نتيجة في{" "}
-            <span className="font-bold text-gold">{toArabicDigits(results.length)}</span> فصل
+            <span className="font-bold text-gold">{formatNumber(total)}</span> نتيجة في{" "}
+            <span className="font-bold text-gold">{formatNumber(results.length)}</span> فصل
           </div>
 
           <div className="space-y-4">
@@ -100,7 +101,7 @@ export function SearchClient() {
                   <Link href={`/chapters/${ch.chapterNumber}`}
                     className="flex items-center gap-3 group/link">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gold/30 bg-muted/70 font-mono text-sm font-bold text-gold">
-                      {toArabicDigits(ch.chapterNumber)}
+                      {formatNumber(ch.chapterNumber)}
                     </div>
                     <div>
                       <h3 className="font-naskh text-base font-bold text-foreground group-hover/link:text-gold transition-colors">
@@ -108,7 +109,7 @@ export function SearchClient() {
                       </h3>
                       <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
                         <Hash className="h-2.5 w-2.5" />
-                        {toArabicDigits(ch.matchCount)} نتيجة
+                        {formatNumber(ch.matchCount)} نتيجة
                       </div>
                     </div>
                   </Link>
@@ -130,7 +131,7 @@ export function SearchClient() {
                   ))}
                   {ch.matchCount > 10 && (
                     <p className="text-center text-[10px] text-muted-foreground/60 py-1">
-                      + {toArabicDigits(ch.matchCount - 10)} نتيجة أخرى في هذا الفصل
+                      + {formatNumber(ch.matchCount - 10)} نتيجة أخرى في هذا الفصل
                     </p>
                   )}
                 </div>

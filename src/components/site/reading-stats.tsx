@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore, useState } from "react";
 import { Bookmark, CheckCircle2, Clock, BookOpen, TrendingUp, Download, Upload } from "lucide-react";
-import { toArabicDigits } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 // Types
 type ReadingStats = {
@@ -103,6 +103,7 @@ export function ReadingStatsWidget({
 }: {
   totalChapters: number;
 }) {
+  const { t, formatNumber } = useLanguage();
   const { stats } = useReadingStats();
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
@@ -138,33 +139,33 @@ export function ReadingStatsWidget({
       }
       emitStatsChange();
       setShowImport(false); setImportText("");
-      alert("تم استيراد التقدم بنجاح! سيتم تحديث الصفحة.");
+      alert(t("تم استيراد التقدم بنجاح! سيتم تحديث الصفحة."));
       window.location.reload();
-    } catch { alert("ملف غير صالح. تأكد من صحة الملف."); }
+    } catch { alert(t("ملف غير صالح. تأكد من صحة الملف.")); }
   }
 
   return (
     <div className="gold-card rounded-lg p-6">
       <div className="mb-4 flex items-center gap-2">
         <TrendingUp className="h-5 w-5 text-gold" />
-        <h2 className="font-naskh text-lg font-bold">تقدّم قراءتك</h2>
+        <h2 className="font-naskh text-lg font-bold">{t("تقدّم قراءتك")}</h2>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <Stat
           icon={<CheckCircle2 className="h-4 w-4" />}
-          value={toArabicDigits(readCount)}
-          label={`من ${toArabicDigits(totalChapters)} فصل`}
+          value={formatNumber(readCount)}
+          label={`${t("من")} ${formatNumber(totalChapters)} ${t("فصل")}`}
         />
         <Stat
           icon={<Clock className="h-4 w-4" />}
-          value={toArabicDigits(totalMinutes)}
-          label="دقيقة قراءة"
+          value={formatNumber(totalMinutes)}
+          label={t("دقيقة قراءة")}
         />
         <Stat
           icon={<BookOpen className="h-4 w-4" />}
-          value={`${toArabicDigits(progress)}٪`}
-          label="مكتمل"
+          value={`${formatNumber(progress)}٪`}
+          label={t("مكتمل")}
         />
       </div>
 
@@ -184,17 +185,17 @@ export function ReadingStatsWidget({
           <div className="flex items-center gap-2">
             <Bookmark className="h-4 w-4 text-gold" />
             <span className="text-sm text-muted-foreground">
-              آخر فصل قرأته:
+              {t("آخر فصل قرأته:")}
             </span>
             <span className="font-naskh text-sm font-bold text-gold">
-              الفصل {toArabicDigits(lastChapter)}
+              {t("الفصل")} {formatNumber(lastChapter)}
             </span>
           </div>
           <a
             href={`/chapters/${lastChapter}`}
             className="text-xs text-gold/70 hover:text-gold"
           >
-            متابعة ←
+            {t("متابعة")} ←
           </a>
         </div>
       )}
@@ -203,30 +204,30 @@ export function ReadingStatsWidget({
       <div className="mt-4 flex items-center justify-end gap-2">
         <button onClick={exportProgress}
           className="inline-flex items-center gap-1 rounded border border-gold/20 px-2.5 py-1 text-[10px] text-gold/60 hover:border-gold/40 hover:text-gold transition-colors"
-          title="تصدير تقدمك لحفظه">
-          <Download className="h-3 w-3" /> تصدير
+          title={t("تصدير تقدمك لحفظه")}>
+          <Download className="h-3 w-3" /> {t("تصدير")}
         </button>
         <button onClick={() => setShowImport(!showImport)}
           className="inline-flex items-center gap-1 rounded border border-gold/20 px-2.5 py-1 text-[10px] text-gold/60 hover:border-gold/40 hover:text-gold transition-colors"
-          title="استيراد تقدمك من ملف">
-          <Upload className="h-3 w-3" /> استيراد
+          title={t("استيراد تقدمك من ملف")}>
+          <Upload className="h-3 w-3" /> {t("استيراد")}
         </button>
       </div>
 
       {showImport && (
         <div className="mt-3 rounded-md border border-gold/25 bg-muted/50 p-3 space-y-2">
-          <p className="text-[10px] text-muted-foreground">الصق محتوى ملف التصدير هنا:</p>
+          <p className="text-[10px] text-muted-foreground">{t("الصق محتوى ملف التصدير هنا:")}</p>
           <textarea value={importText} onChange={e => setImportText(e.target.value)}
             className="w-full h-20 rounded border border-gold/20 bg-muted p-2 text-[11px] font-mono resize-y focus:border-gold/40 focus:outline-none"
             placeholder='{ "reading-stats": {...}, ... }' />
           <div className="flex gap-2">
             <button onClick={importProgress} disabled={!importText.trim()}
               className="flex-1 rounded bg-gold py-1.5 text-[11px] font-bold text-[#1a0a00] hover:bg-gold-soft transition-colors disabled:opacity-40">
-              استيراد
+              {t("استيراد")}
             </button>
             <button onClick={() => { setShowImport(false); setImportText(""); }}
               className="rounded border border-gold/20 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-gold transition-colors">
-              إلغاء
+              {t("إلغاء")}
             </button>
           </div>
         </div>

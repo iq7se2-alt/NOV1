@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { formatArabicDate, formatTimeAgo, toArabicDigits } from "@/lib/format";
+import { formatArabicDate, formatTimeAgo } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 type Comment = {
   id: number;
@@ -26,6 +27,7 @@ type Comment = {
 /** Render comment text with **bold**, *italic*, and ||spoiler|| formatting */
 function SpoilerText({ children }: { children: React.ReactNode }) {
   const [revealed, setRevealed] = useState(false);
+  const { t } = useLanguage();
   return (
     <span
       role="button"
@@ -37,7 +39,7 @@ function SpoilerText({ children }: { children: React.ReactNode }) {
           ? "bg-gold/15 text-gold italic"
           : "bg-muted text-muted pointer-events-none text-[0] hover:opacity-80 before:pointer-events-auto before:content-['🔒_اضغط_لإظهار']"
       }`}
-      title={revealed ? "اضغط لإخفاء" : "اضغط لإظهار"}
+      title={t(revealed ? "اضغط لإخفاء" : "اضغط لإظهار")}
     >
       {revealed ? children : <>&nbsp;</>}
     </span>
@@ -95,6 +97,7 @@ function renderFormattedText(text: string): React.ReactNode {
 
 export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: number; limit?: number }) {
   const { toast } = useToast();
+  const { t, formatNumber } = useLanguage();
   const [comments, setComments] = useState<Comment[]>([]);
   // Only render the first page of comments; a busy chapter can have 1000+, and
   // mounting them all locks the page up. "Load more" extends by `limit` each time.
@@ -165,7 +168,7 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
       setContent("");
       setWordAnchor("");
       setShowAnchorField(false);
-      toast({ title: "تم النشر", description: "تم نشر تعليقك بنجاح" });
+      toast({ title: t("تم النشر"), description: t("تم نشر تعليقك بنجاح") });
     } catch {
       toast({
         title: "خطأ",
@@ -191,7 +194,7 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
         return;
       }
       setComments((prev) => prev.filter((c) => c.id !== id));
-      toast({ title: "تم الحذف", description: "تم حذف التعليق" });
+      toast({ title: t("تم الحذف"), description: t("تم حذف التعليق") });
     } finally {
       setDeletingId(null);
     }
@@ -225,13 +228,13 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
       <div className="mb-5 flex items-center justify-between">
         <h2 className="flex items-center gap-2 font-naskh text-xl font-bold text-gold-gradient">
           <MessageSquare className="h-5 w-5 text-gold/70" />
-          التعليقات
+          {t("التعليقات")}
         </h2>
         <Badge
           variant="outline"
           className="border-gold/30 bg-gold/10 text-gold"
         >
-          {toArabicDigits(comments.length)} تعليق
+          {formatNumber(comments.length)} {t("تعليق")}
         </Badge>
       </div>
 
@@ -243,27 +246,27 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
         <Input
           value={author}
           onChange={(e) => setAuthor(e.target.value)}
-          placeholder="اسمك"
+          placeholder={t("اسمك")}
           maxLength={50}
           className="border-gold/25 bg-muted font-naskh"
-          aria-label="اسمك"
+          aria-label={t("اسمك")}
         />
         <Textarea
           ref={textareaRef}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="اكتب تعليقك... (يدعم **غامق** و *مائل* و ||حرق||)"
+          placeholder={t("اكتب تعليقك... (يدعم **غامق** و *مائل* و ||حرق||)")}
           maxLength={2000}
           rows={3}
           className="resize-y border-gold/25 bg-muted font-naskh leading-relaxed"
-          aria-label="تعليقك"
+          aria-label={t("تعليقك")}
         />
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => insertFormatting("**", "**")}
             className="inline-flex h-7 items-center gap-1 rounded border border-gold/20 px-2 text-xs text-gold/60 transition-colors hover:border-gold/50 hover:text-gold"
-            title="نص غامق (Bold)"
+            title={t("نص غامق (Bold)")}
           >
             <Bold className="h-3 w-3" />
           </button>
@@ -271,7 +274,7 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
             type="button"
             onClick={() => insertFormatting("*", "*")}
             className="inline-flex h-7 items-center gap-1 rounded border border-gold/20 px-2 text-xs text-gold/60 transition-colors hover:border-gold/50 hover:text-gold"
-            title="نص مائل (Italic)"
+            title={t("نص مائل (Italic)")}
           >
             <Italic className="h-3 w-3" />
           </button>
@@ -279,7 +282,7 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
             type="button"
             onClick={() => insertFormatting("||", "||")}
             className="inline-flex h-7 items-center gap-1 rounded border border-gold/20 px-2 text-xs text-gold/60 transition-colors hover:border-gold/50 hover:text-gold"
-            title="نص مخفي - حرق (Spoiler)"
+            title={t("نص مخفي - حرق (Spoiler)")}
           >
             <EyeOff className="h-3 w-3" />
           </button>
@@ -292,10 +295,10 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
             <Input
               value={wordAnchor}
               onChange={(e) => setWordAnchor(e.target.value)}
-              placeholder="اكتب كلمة من الفصل للربط بها..."
+              placeholder={t("اكتب كلمة من الفصل للربط بها...")}
               maxLength={100}
               className="h-8 border-0 bg-transparent font-naskh text-sm shadow-none focus-visible:ring-0"
-              aria-label="كلمة الربط"
+              aria-label={t("كلمة الربط")}
             />
             {wordAnchor && (
               <button
@@ -314,7 +317,7 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
               }}
               className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
             >
-              إخفاء
+              {t("إخفاء")}
             </button>
           </div>
         ) : (
@@ -324,13 +327,13 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
             className="flex items-center gap-1.5 text-xs text-gold/60 transition-colors hover:text-gold"
           >
             <Link2 className="h-3.5 w-3.5" />
-            ربط التعليق بكلمة في الفصل
+            {t("ربط التعليق بكلمة في الفصل")}
           </button>
         )}
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-[10px] text-muted-foreground">
-            {toArabicDigits(content.length)} / {toArabicDigits(2000)}
+            {formatNumber(content.length)} / {formatNumber(2000)}
           </span>
           <Button
             type="submit"
@@ -342,7 +345,7 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
             ) : (
               <Send className="ml-2 h-4 w-4" />
             )}
-            نشر التعليق
+            {t("نشر التعليق")}
           </Button>
         </div>
       </form>
@@ -361,7 +364,7 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
       ) : comments.length === 0 ? (
         <div className="gold-card rounded-lg p-10 text-center">
           <p className="font-naskh text-sm text-muted-foreground">
-            لا توجد تعليقات بعد. كن أول من يعلّق!
+            {t("لا توجد تعليقات بعد. كن أول من يعلّق!")}
           </p>
         </div>
       ) : (
@@ -389,8 +392,8 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
                   type="button"
                   onClick={() => handleDelete(c.id)}
                   disabled={deletingId === c.id}
-                  aria-label="حذف التعليق"
-                  title="حذف"
+                  aria-label={t("حذف التعليق")}
+                  title={t("حذف")}
                   className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-red-600/20 hover:text-red-300 disabled:opacity-50"
                 >
                   {deletingId === c.id ? (
@@ -412,10 +415,10 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
                   type="button"
                   onClick={() => scrollToWord(c.wordAnchor!)}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs text-gold/80 transition-colors hover:border-gold/60 hover:bg-gold/20 hover:text-gold"
-                  title="اضغط للذهاب إلى الكلمة في الفصل"
+                  title={t("اضغط للذهاب إلى الكلمة في الفصل")}
                 >
                   <Link2 className="h-3 w-3" />
-                  مرتبط بـ: «{c.wordAnchor.substring(0, 40)}
+                  {t("مرتبط بـ")} «{c.wordAnchor.substring(0, 40)}
                   {c.wordAnchor.length > 40 ? "…" : ""}»
                 </button>
               )}
@@ -456,10 +459,10 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
             onClick={() => setVisibleCount((v) => v + limit)}
             className="rounded-full border border-gold/25 bg-gold/10 px-5 py-2 text-xs font-medium text-gold transition-colors hover:bg-gold/20"
           >
-            عرض {toArabicDigits(Math.min(limit, comments.length - visibleCount))} تعليقاً آخر
+            {t("عرض")} {formatNumber(Math.min(limit, comments.length - visibleCount))} {t("تعليقاً آخر")}
           </button>
           <p className="text-[10px] text-muted-foreground">
-            معروض {toArabicDigits(visibleCount)} من {toArabicDigits(comments.length)}
+            {t("معروض")} {formatNumber(visibleCount)} {t("من")} {formatNumber(comments.length)}
           </p>
         </div>
       )}
@@ -467,7 +470,7 @@ export function CommentsSection({ chapterNumber, limit = 10 }: { chapterNumber: 
       {/* All comments shown */}
       {comments.length > 0 && comments.length <= visibleCount && (
         <p className="mt-4 text-center text-[10px] text-muted-foreground">
-          كل التعليقات معروضة ({toArabicDigits(comments.length)})
+          {t("كل التعليقات معروضة")} ({formatNumber(comments.length)})
         </p>
       )}
     </section>

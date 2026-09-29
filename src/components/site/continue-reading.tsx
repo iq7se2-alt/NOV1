@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { BookOpen, ArrowLeft } from "lucide-react";
 import { getLastReadChapter } from "@/components/site/scroll-memory";
-import { toArabicDigits } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 // Hydration-safe store for the last-read chapter number from localStorage.
 const listeners = new Set<() => void>();
@@ -26,6 +26,7 @@ function getLastReadServerSnapshot(): number | null {
  * of the home page so the reader can jump back in with one click.
  */
 export function ContinueReading() {
+  const { t, formatNumber } = useLanguage();
   const chapterNumber = useSyncExternalStore(
     subscribeLastRead,
     getLastReadSnapshot,
@@ -50,7 +51,7 @@ export function ContinueReading() {
             أين توقفت؟
           </p>
           <p className="mt-0.5 font-naskh text-lg font-bold text-foreground transition-colors group-hover:text-gold">
-            تابع قراءة الفصل {toArabicDigits(chapterNumber)}
+            تابع قراءة الفصل {formatNumber(chapterNumber)}
           </p>
         </div>
       </div>

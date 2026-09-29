@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { MapPin, User } from "lucide-react";
 import { toArabicDigits } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 
 type Bucket = { chapter: number; chars: number; newLocs: number; words: number };
 type Filter = "all" | "character" | "location";
@@ -25,8 +26,28 @@ type Milestone = {
   kind: "character" | "location";
   name: string;
   imageUrl: string | null;
+  /** Raw mention count (number as string) or "" — the unit is rendered client-side. */
   meta: string;
 };
+
+/** Page header (client so the count + group size follow the language toggle). */
+export function TimelinePageHeader({ eventCount, bucket }: { eventCount: number; bucket: number }) {
+  const { t, formatNumber } = useLanguage();
+  return (
+    <div className="mb-8 text-center">
+      <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-1 text-xs text-gold/80">
+        {t("خط زمني")}
+      </div>
+      <h1 className="font-naskh text-4xl font-bold text-gold-gradient sm:text-5xl">
+        {t("الخط الزمني للرواية")}
+      </h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {formatNumber(eventCount)} {t("حدث")} · {t("كل مجموعة")} {formatNumber(bucket)}{" "}
+        {t("فصلاً")}
+      </p>
+    </div>
+  );
+}
 
 const GOLD = "#d4a843";
 const GOLD_SOFT = "#e3c878";
@@ -41,24 +62,26 @@ export function MilestoneTimeline({
   filter?: Filter;
 }) {
   const [metric, setMetric] = useState<"chars" | "newLocs" | "words">("chars");
+  const { t, formatNumber } = useLanguage();
+  const n = (v: number | string) => formatNumber(v);
 
   // The page-wide filter narrows which series the chart shows.
   const metrics: Array<["chars" | "newLocs" | "words", string]> =
     filter === "character"
-      ? [["chars", "شخصيات"]]
+      ? [["chars", t("شخصيات")]]
       : filter === "location"
-        ? [["newLocs", "أماكن جديدة"]]
+        ? [["newLocs", t("أماكن جديدة")]]
         : [
-            ["chars", "شخصيات"],
-            ["newLocs", "أماكن جديدة"],
-            ["words", "كلمات"],
+            ["chars", t("شخصيات")],
+            ["newLocs", t("أماكن جديدة")],
+            ["words", t("كلمات")],
           ];
   const visibleMetric = metrics.some(([k]) => k === metric) ? metric : metrics[0][0];
 
   return (
     <div className="gold-card rounded-xl p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-naskh text-base font-bold text-gold">كثافة الأحداث عبر الرواية</h2>
+        <h2 className="font-naskh text-base font-bold text-gold">{t("كثافة الأحداث عبر الرواية")}</h2>
         <div className="inline-flex rounded-lg border border-gold/20 bg-muted/40 p-0.5">
           {metrics.map(([key, label]) => (
             <button
@@ -94,14 +117,14 @@ export function MilestoneTimeline({
               tick={{ fill: "rgba(212,168,67,0.6)", fontSize: 10 }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v: number) => toArabicDigits(v)}
+              tickFormatter={(v: number) => n(v)}
             />
             <YAxis
               tick={{ fill: "rgba(212,168,67,0.45)", fontSize: 10 }}
               tickLine={false}
               axisLine={false}
               width={38}
-              tickFormatter={(v: number) => toArabicDigits(v)}
+              tickFormatter={(v: number) => n(v)}
             />
             <Tooltip
               contentStyle={{
@@ -111,14 +134,16 @@ export function MilestoneTimeline({
                 color: "#e3c878",
                 fontSize: 12,
               }}
-              labelFormatter={(v) => `من الفصل ${toArabicDigits(Number(v))}`}
+              labelFormatter={(v) => `${t("من الفصل")} ${n(Number(v))}`}
               formatter={(value: number, name) => [
-                toArabicDigits(value),
-                name === "chars" ? "شخصية" : name === "newLocs" ? "مكان جديد" : "كلمة",
+                n(value),
+                t(name === "chars" ? "شخصية" : name === "newLocs" ? "مكان جديد" : "كلمة"),
               ]}
             />
             <Legend
-              formatter={(v) => (v === "chars" ? "شخصيات" : v === "newLocs" ? "أماكن جديدة" : "كلمات")}
+              formatter={(v) =>
+                t(v === "chars" ? "شخصيات" : v === "newLocs" ? "أماكن جديدة" : "كلمات")
+              }
               wrapperStyle={{ fontSize: 11, color: "rgba(212,168,67,0.7)" }}
             />
             {visibleMetric === "words" ? (
@@ -149,7 +174,7 @@ export function MilestoneTimeline({
         </ResponsiveContainer>
       </div>
       <p className="mt-2 text-center text-[10px] text-muted-foreground">
-        المحور الأفقي = رقم بداية كل مجموعة من {toArabicDigits(50)} فصلاً
+        {t("المحور الأفقي = رقم بداية كل مجموعة من ٥٠ فصلاً").replace("٥٠", n(50))}
       </p>
     </div>
   );
@@ -165,10 +190,11 @@ export function TimelineFilter({
   onChange: (v: "all" | "character" | "location") => void;
   counts?: { all?: number; character?: number; location?: number };
 }) {
+  const { t, formatNumber } = useLanguage();
   const opts: Array<[typeof value, string]> = [
-    ["all", "الكل"],
-    ["character", "الشخصيات فقط"],
-    ["location", "الأماكن فقط"],
+    ["all", t("الكل")],
+    ["character", t("الشخصيات فقط")],
+    ["location", t("الأماكن فقط")],
   ];
   return (
     <div className="mb-6 flex flex-wrap justify-center gap-2">
@@ -188,7 +214,7 @@ export function TimelineFilter({
             {key === "character" && <User className="h-3.5 w-3.5" />}
             {key === "location" && <MapPin className="h-3.5 w-3.5" />}
             {label}
-            {n != null && <span className="text-[10px] text-gold/50">({toArabicDigits(n)})</span>}
+            {n != null && <span className="text-[10px] text-gold/50">({formatNumber(n)})</span>}
           </button>
         );
       })}
@@ -205,6 +231,7 @@ export function MilestoneList({
   filter: "all" | "character" | "location";
 }) {
   const [limit, setLimit] = useState(60);
+  const { t, formatNumber } = useLanguage();
 
   const rows = milestones.filter((m) => filter === "all" || m.kind === filter);
   const shown = rows.slice(0, limit);
@@ -213,7 +240,7 @@ export function MilestoneList({
     <div>
       {rows.length === 0 && (
         <div className="rounded-lg border border-gold/20 bg-muted/20 py-10 text-center font-naskh text-sm text-muted-foreground">
-          لا أحداث في هذا التصنيف
+          {t("لا أحداث في هذا التصنيف")}
         </div>
       )}
 
@@ -251,8 +278,8 @@ export function MilestoneList({
                   {m.name}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
-                  الفصل {toArabicDigits(m.chapter)}
-                  {m.meta ? ` · ${m.meta}` : ""}
+                  {t("الفصل")} {formatNumber(m.chapter)}
+                  {m.meta ? ` · ${formatNumber(m.meta)} ${t("ذكر")}` : ""}
                 </span>
               </span>
               <span
@@ -263,7 +290,7 @@ export function MilestoneList({
                     : "border-pink/30 bg-pink/10 text-pink/80")
                 }
               >
-                {m.kind === "character" ? "شخصية" : "مكان"}
+                {t(m.kind === "character" ? "شخصية" : "مكان")}
               </span>
             </Link>
           </li>
@@ -275,7 +302,7 @@ export function MilestoneList({
           onClick={() => setLimit((l) => l + 60)}
           className="mt-4 w-full rounded-lg border border-gold/25 bg-gold/10 py-2 text-xs text-gold transition-colors hover:bg-gold/20"
         >
-          عرض {toArabicDigits(Math.min(60, rows.length - shown.length))} حدثاً آخر
+          {t("عرض")} {formatNumber(Math.min(60, rows.length - shown.length))} {t("حدثاً آخر")}
         </button>
       )}
     </div>
@@ -294,6 +321,7 @@ export function MilestoneClient({
   milestones: Milestone[];
 }) {
   const [filter, setFilter] = useState<Filter>("all");
+  const { t } = useLanguage();
   const counts = {
     all: milestones.length,
     character: milestones.filter((m) => m.kind === "character").length,
@@ -306,11 +334,13 @@ export function MilestoneClient({
       <MilestoneTimeline data={data} filter={filter} />
       <section className="mt-10">
         <h2 className="mb-4 text-center font-naskh text-lg font-bold text-gold">
-          {filter === "character"
-            ? "أول ظهور لكل شخصية"
-            : filter === "location"
-              ? "أول ظهور لكل مكان"
-              : "أول ظهور لكل شخصية ومكان"}
+          {t(
+            filter === "character"
+              ? "أول ظهور لكل شخصية"
+              : filter === "location"
+                ? "أول ظهور لكل مكان"
+                : "أول ظهور لكل شخصية ومكان",
+          )}
         </h2>
         <MilestoneList milestones={milestones} filter={filter} />
       </section>

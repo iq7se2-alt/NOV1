@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { toArabicDigits } from "@/lib/format";
-import { MilestoneClient } from "@/components/site/milestone-timeline";
+import { MilestoneClient, TimelinePageHeader } from "@/components/site/milestone-timeline";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +52,7 @@ export default async function TimelinePage() {
           kind: "character" as const,
           name: m.name,
           imageUrl: m.imageUrl,
-          meta: `${toArabicDigits(m.mentionCount)} ذكر`,
+          meta: String(m.mentionCount), // count only; unit rendered client-side
         };
       }),
     ...locations
@@ -73,15 +73,7 @@ export default async function TimelinePage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
-      <div className="mb-8 text-center">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-1 text-xs text-gold/80">
-          خط زمني
-        </div>
-        <h1 className="font-naskh text-4xl font-bold text-gold-gradient sm:text-5xl">الخط الزمني للرواية</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {toArabicDigits(milestones.length)} حدث · كل مجموعة {toArabicDigits(BUCKET)} فصلاً
-        </p>
-      </div>
+      <TimelinePageHeader eventCount={milestones.length} bucket={BUCKET} />
 
       <MilestoneClient data={chart} milestones={milestones} />
     </div>

@@ -17,7 +17,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { toArabicDigits } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type Character = {
@@ -93,6 +93,7 @@ export function CharactersGrid({
   characters: Character[];
   relations: Relation[];
 }) {
+  const { t, formatNumber } = useLanguage();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [sort, setSort] = useState<"mentions" | "chapters" | "name">("mentions");
@@ -179,7 +180,7 @@ export function CharactersGrid({
   }, [characters]);
 
   const kindLabel = (k?: string) =>
-    KIND_META[k || "person"]?.label || "شخصية";
+    t(KIND_META[k || "person"]?.label || "شخصية");
   const KindIcon = (k?: string) => KIND_META[k || "person"]?.icon || User;
 
   return (
@@ -192,7 +193,7 @@ export function CharactersGrid({
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="ابحث عن شخصية أو فرقة أو جيش..."
+              placeholder={t("ابحث عن شخصية أو فرقة أو جيش...")}
               className="border-gold/25 bg-muted pr-10 font-naskh"
             />
             {q && (
@@ -209,12 +210,12 @@ export function CharactersGrid({
             onChange={(e) => setSort(e.target.value as typeof sort)}
             className="rounded-lg border border-gold/25 bg-muted px-3 py-2 text-xs text-gold outline-none"
           >
-            <option value="mentions">الترتيب: عدد الذكر</option>
-            <option value="chapters">الترتيب: عدد الفصول</option>
-            <option value="name">الترتيب: الاسم</option>
+            <option value="mentions">{t("الترتيب")}: {t("عدد الذكر")}</option>
+            <option value="chapters">{t("الترتيب")}: {t("عدد الفصول")}</option>
+            <option value="name">{t("الترتيب")}: {t("الاسم")}</option>
           </select>
           <span className="text-xs text-muted-foreground">
-            {toArabicDigits(filtered.length)} كيان
+            {formatNumber(filtered.length)} {t("كيان")}
           </span>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -238,7 +239,7 @@ export function CharactersGrid({
                   : "border-gold/20 text-gold/60 hover:border-gold/40"
               )}
             >
-              {f.label}
+              {t(f.label)}
             </button>
           ))}
         </div>
@@ -273,7 +274,7 @@ export function CharactersGrid({
                     rankStyle || ""
                   )}
                 >
-                  {toArabicDigits(rank)}
+                  {formatNumber(rank)}
                 </span>
               )}
 
@@ -311,7 +312,7 @@ export function CharactersGrid({
                 {(char.mentionCount || 0) > 0 && (
                   <span className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-gold/40 bg-background/95 px-2 py-0.5 text-[10px] font-bold text-gold shadow-lg backdrop-blur-sm">
                     <Flame className="h-3 w-3 fill-orange-500/70 text-orange-500" />
-                    {toArabicDigits(char.mentionCount || 0)} ذكر
+                    {formatNumber(char.mentionCount || 0)} {t("ذكر")}
                   </span>
                 )}
                 {char.isMain && (
@@ -351,12 +352,12 @@ export function CharactersGrid({
               <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <BookOpen className="h-2.5 w-2.5" />
-                  {toArabicDigits(char.chapterCount || char.chapters.length)}
+                  {formatNumber(char.chapterCount || char.chapters.length)}
                 </span>
                 {charRels.length > 0 && (
                   <span className="flex items-center gap-1 text-gold/60">
                     <Users className="h-2.5 w-2.5" />
-                    {toArabicDigits(charRels.length)}
+                    {formatNumber(charRels.length)}
                   </span>
                 )}
               </div>
@@ -367,10 +368,10 @@ export function CharactersGrid({
                   href={`/chapters/${char.firstChapter}?char=${char.id}`}
                   onClick={(e) => e.stopPropagation()}
                   className="mt-2 inline-flex items-center gap-1 rounded-md border border-gold/20 bg-gold/5 px-2 py-0.5 text-[9px] text-gold/70 transition-all hover:border-gold/50 hover:bg-gold/15 hover:text-gold"
-                  title="اذهب إلى أول ظهور وسيُظلل الاسم"
+                  title={t("اذهب إلى أول ظهور وسيُظلل الاسم")}
                 >
                   <MapPin className="h-2.5 w-2.5" />
-                  أول ظهور: الفصل {toArabicDigits(char.firstChapter)}
+                  {t("أول ظهور")}: {t("الفصل")} {formatNumber(char.firstChapter)}
                 </Link>
               )}
             </button>
@@ -414,7 +415,7 @@ export function CharactersGrid({
               {(selected.mentionCount || 0) > 0 && (
                 <span className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-gold/40 bg-background/90 px-3 py-1 text-xs font-bold text-gold shadow-lg">
                   <Flame className="h-3.5 w-3.5 fill-orange-500/70 text-orange-500" />
-                  {toArabicDigits(selected.mentionCount || 0)} ذكر في الرواية
+                  {formatNumber(selected.mentionCount || 0)} {t("ذكر")} في الرواية
                 </span>
               )}
             </div>
@@ -429,7 +430,7 @@ export function CharactersGrid({
                 {selected.isMain && (
                   <span className="flex items-center gap-1 rounded-full bg-gold/90 px-2 py-0.5 text-[10px] font-bold text-[#1a0a00]">
                     <Star className="h-2.5 w-2.5 fill-current" />
-                    رئيسي
+                    {t("رئيسي")}
                   </span>
                 )}
                 <span
@@ -443,7 +444,7 @@ export function CharactersGrid({
                 </span>
                 {rankOf.get(selected.id)! <= 3 && (
                   <span className="rounded-full bg-gradient-to-br from-amber-300 to-amber-600 px-2 py-0.5 text-[10px] font-black text-[#1a0a00]">
-                    المرتبة {toArabicDigits(rankOf.get(selected.id)!)} بالذكر
+                    {t("المرتبة")} {formatNumber(rankOf.get(selected.id)!)} {t("بالذكر")}
                   </span>
                 )}
               </div>
@@ -462,21 +463,21 @@ export function CharactersGrid({
               <div className="mb-4 grid grid-cols-3 gap-3">
                 <div className="rounded-lg border border-gold/20 bg-muted/50 p-3 text-center">
                   <div className="font-bold text-gold">
-                    {toArabicDigits(selected.mentionCount || 0)}
+                    {formatNumber(selected.mentionCount || 0)}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">ذكر</div>
+                  <div className="text-[10px] text-muted-foreground">{t("ذكر")}</div>
                 </div>
                 <div className="rounded-lg border border-gold/20 bg-muted/50 p-3 text-center">
                   <div className="font-bold text-gold">
-                    {toArabicDigits(appearances?.length ?? selected.chapterCount ?? 0)}
+                    {formatNumber(appearances?.length ?? selected.chapterCount ?? 0)}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">فصل</div>
+                  <div className="text-[10px] text-muted-foreground">{t("فصل")}</div>
                 </div>
                 <div className="rounded-lg border border-gold/20 bg-muted/50 p-3 text-center">
                   <div className="font-bold text-gold">
-                    {toArabicDigits(selectedRelations.length)}
+                    {formatNumber(selectedRelations.length)}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">علاقة</div>
+                  <div className="text-[10px] text-muted-foreground">{t("علاقة")}</div>
                 </div>
               </div>
 
@@ -490,11 +491,11 @@ export function CharactersGrid({
                     <MapPin className="h-4 w-4 text-gold" />
                     <div>
                       <div className="text-sm font-bold text-gold">
-                        أول ظهور: الفصل{" "}
-                        {toArabicDigits(selected.firstChapter)}
+                        {t("أول ظهور")}: {t("الفصل")}{" "}
+                        {formatNumber(selected.firstChapter)}
                       </div>
                       <div className="text-[10px] text-muted-foreground">
-                        اضغط للانتقال إلى الفقرة وتظليل الاسم ٣ ثواني
+                        {t("اضغط للانتقال إلى الفقرة وتظليل الاسم ٣ ثواني")}
                       </div>
                     </div>
                   </div>
@@ -508,8 +509,8 @@ export function CharactersGrid({
                   <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gold/80">
                     <BookOpen className="h-4 w-4" />
                     {appearances
-                      ? `ظهر في ${toArabicDigits(appearances.length)} فصل`
-                      : "جلب الفصول..."}
+                      ? `${t("ظهر في")} ${formatNumber(appearances.length)} ${t("فصل")}`
+                      : t("جلب الفصول...")}
                   </h3>
                   <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
                     {(appearances || []).slice(0, 100).map(({ number: chNum, para }) => (
@@ -517,19 +518,19 @@ export function CharactersGrid({
                         key={chNum}
                         href={`/chapters/${chNum}?char=${selected.id}#para-${para}`}
                         className="group flex flex-col items-center justify-center rounded-md border border-gold/20 bg-gold/5 px-2 py-1 text-[11px] text-gold/80 transition-all hover:border-gold/50 hover:bg-gold/15 hover:text-gold"
-                        title={`الفصل ${chNum} — اضغط للذهاب إلى أول ظهور (فقرة ${toArabicDigits(para + 1)}) وتظليل اسم الشخصية`}
+                        title={`${t("الفصل")} ${formatNumber(chNum)} — ${t("اضغط للذهاب إلى أول ظهور (فقرة")} ${formatNumber(para + 1)}) ${t("وتظليل اسم الشخصية")}`}
                       >
                         <span className="font-bold leading-tight">
-                          {toArabicDigits(chNum)}
+                          {formatNumber(chNum)}
                         </span>
                         <span className="text-[8px] leading-tight text-gold/50 group-hover:text-gold/80">
-                          {toArabicDigits(para + 1)} فقرة
+                          {formatNumber(para + 1)} {t("فقرة")}
                         </span>
                       </Link>
                     ))}
                     {appearances && appearances.length > 100 && (
                       <span className="text-[10px] text-muted-foreground p-1">
-                        +{toArabicDigits(appearances.length - 100)} أخرى
+                        +{formatNumber(appearances.length - 100)} أخرى
                       </span>
                     )}
                   </div>
@@ -541,7 +542,7 @@ export function CharactersGrid({
                 <div className="mb-4">
                   <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gold/80">
                     <Users className="h-4 w-4" />
-                    العلاقات
+                    {t("العلاقات")}
                   </h3>
                   <div className="space-y-1.5">
                     {selectedRelations.map((rel) => {
@@ -563,7 +564,7 @@ export function CharactersGrid({
                               color: style.color,
                             }}
                           >
-                            {style.label}
+                            {t(style.label)}
                           </span>
                           <span className="text-sm text-foreground/80">
                             {isFrom ? "→" : "←"} {otherName}
@@ -586,10 +587,10 @@ export function CharactersGrid({
             onClick={() => setCardLimit((n) => n + 60)}
             className="rounded-full border border-gold/30 bg-gold/10 px-6 py-2 text-sm text-gold transition-colors hover:bg-gold/20"
           >
-            عرض {toArabicDigits(Math.min(remaining, 60))} كرتاً آخر
+            عرض {formatNumber(Math.min(remaining, 60))} كرتاً آخر
           </button>
           <p className="text-[10px] text-muted-foreground">
-            معروض {toArabicDigits(shown.length)} من {toArabicDigits(filtered.length)}
+            معروض {formatNumber(shown.length)} من {formatNumber(filtered.length)}
           </p>
         </div>
       )}

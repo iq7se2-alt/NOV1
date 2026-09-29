@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "@/lib/i18n";
+
 import { useRef, useMemo, useState, useEffect, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Float, Sparkles, Environment } from "@react-three/drei";
@@ -248,18 +250,19 @@ function TreeMesh({ readCount }: { readCount: number }) {
 
 // ─── Main component ───
 export function TreeOfWisdom({ readCount }: { readCount: number }) {
+  const { t, formatNumber } = useLanguage();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
     return (
       <div className="flex h-[400px] items-center justify-center rounded-xl border border-gold/20 bg-gradient-to-b from-background to-muted">
-        <div className="animate-pulse text-gold/50">يحمّل شجرة الحكمة...</div>
+        <div className="animate-pulse text-gold/50">{t("يحمّل شجرة الحكمة...")}</div>
       </div>
     );
   }
 
-  const stage = readCount === 0 ? "بذرة" : readCount < 50 ? "جذع" : readCount < 200 ? "أغصان" : readCount < 500 ? "أوراق" : "ثمار";
+  const stage = readCount === 0 ? t("بذرة") : readCount < 50 ? t("جذع") : readCount < 200 ? t("أغصان") : readCount < 500 ? t("أوراق") : t("ثمار");
   const nextMilestone = readCount < 50 ? 50 : readCount < 200 ? 200 : readCount < 500 ? 500 : 1000;
   const progress = Math.min(100, (readCount / nextMilestone) * 100);
 
@@ -309,12 +312,12 @@ export function TreeOfWisdom({ readCount }: { readCount: number }) {
           />
         </div>
         <div className="mt-1 text-[10px] text-muted-foreground">
-          {readCount}/{nextMilestone} فصل
+          {readCount}/{nextMilestone} {t("فصل")}
         </div>
       </div>
 
       <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-gold/20 bg-background/60 px-4 py-1 text-[10px] text-muted-foreground backdrop-blur-md">
-        🖱️ اسحب للتدوير · عجلة الفأرة للتكبير
+        {t("🖱️ اسحب للتدوير · عجلة الفأرة للتكبير")}
       </div>
     </div>
   );
