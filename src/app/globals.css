@@ -731,20 +731,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* The eye emblem is exempt: it is the site's signature animation, and the
-     emblem is built from CSS draw-in + a canvas loop. Killing it here would
-     leave a blank frame, so it opts out on purpose (see src/lib/truth-eye.ts). */
-  .te-draw-exempt,
-  .te-draw-exempt *,
-  .te-draw-exempt *::before,
-  .te-draw-exempt *::after {
-    animation-duration: revert !important;
-    animation-iteration-count: revert !important;
-    transition-duration: revert !important;
-  }
-  *,
-  *::before,
-  *::after {
+  /* The eye emblem opts out: it is the site's signature animation, and a still
+     eye defeats the point of it (this machine has Windows animations off).
+     Written as :not() rather than as a second rule with `revert` — `revert`
+     discards our own declarations for the property and falls back to the
+     browser default, which for animation-duration is 0s, i.e. it would switch
+     the emblem off instead of exempting it. See src/lib/truth-eye.ts. */
+  *:not(.te-draw-exempt, .te-draw-exempt *),
+  *:not(.te-draw-exempt, .te-draw-exempt *)::before,
+  *:not(.te-draw-exempt, .te-draw-exempt *)::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
