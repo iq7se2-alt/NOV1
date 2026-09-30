@@ -10,11 +10,18 @@
  * variables (--gold, --gold-soft, --purple, --card, --background), so it
  * re-themes itself with every one of the seven themes.
  *
+ *
+ * The emblem always animates, even when the OS asks for reduced motion — a still
+ * eye defeats the point of it. `prefers-reduced-motion` is deliberately not consulted.
+ *
  * Returns a cleanup function — call it on unmount.
  */
 export function mountTruthEye(el: HTMLElement): () => void {
   const id = "te" + Math.random().toString(36).slice(2, 8);
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // The emblem is the page's signature animation, so it runs regardless of the OS
+  // motion preference — this machine has Windows animations switched off, which
+  // would otherwise freeze it on a single frame.
+  const reduce = false;
   const R = Math.random;
   const P = Math.PI;
   const f = (n: number) => n.toFixed(2);
@@ -93,7 +100,9 @@ export function mountTruthEye(el: HTMLElement): () => void {
       .map(([x, y], k) => (k ? "L" : "M") + f(x) + " " + f(y))
       .join("") + "Z";
 
-  el.classList.add(id);
+  // te-draw-exempt: the globals.css reduced-motion block skips this subtree so the
+  // emblem keeps animating even when Windows animations are switched off.
+  el.classList.add(id, "te-draw-exempt");
   el.innerHTML = `<style>
 .${id}{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
 .${id}>canvas,.${id}>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
@@ -442,6 +451,6 @@ export function mountTruthEye(el: HTMLElement): () => void {
     window.removeEventListener("pointermove", onMove);
     el.removeEventListener("click", pulse);
     el.innerHTML = "";
-    el.classList.remove(id);
+    el.classList.remove(id, "te-draw-exempt");
   };
 }

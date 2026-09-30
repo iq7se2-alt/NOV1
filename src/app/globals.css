@@ -731,6 +731,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* The eye emblem is exempt: it is the site's signature animation, and the
+     emblem is built from CSS draw-in + a canvas loop. Killing it here would
+     leave a blank frame, so it opts out on purpose (see src/lib/truth-eye.ts). */
+  .te-draw-exempt,
+  .te-draw-exempt *,
+  .te-draw-exempt *::before,
+  .te-draw-exempt *::after {
+    animation-duration: revert !important;
+    animation-iteration-count: revert !important;
+    transition-duration: revert !important;
+  }
   *,
   *::before,
   *::after {
