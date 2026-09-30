@@ -13,6 +13,7 @@ import { ContinueReading } from "@/components/site/continue-reading";
 import { TreeOfWisdomSection } from "@/components/site/tree-of-wisdom-section";
 import { StatCards } from "@/components/site/stat-cards";
 import { HomeLatestChapters } from "@/components/site/home-latest-chapters";
+import { TruthEyeSection } from "@/components/site/truth-eye-section";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,9 @@ export default async function HomePage() {
 
       {/* ===================== TREE OF WISDOM ===================== */}
       <TreeOfWisdomSection />
+
+      {/* ===================== TRUTH EYE ===================== */}
+      <TruthEyeSection />
 
       {/* ===================== ABOUT / CTA ===================== */}
       <section className="border-t border-gold/15 bg-background">

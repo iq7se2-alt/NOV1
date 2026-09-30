@@ -288,6 +288,11 @@ const TRANSLATIONS: Record<string, string> = {
   "رواية ويب عربية · فانتازيا": "Arabic web novel · Fantasy",
   "أحدث ما نُشر من رواية سيد الحقيقة": "The latest from Lord of the Truth",
 
+  // truth eye
+  "عين الحقيقة": "The Eye of Truth",
+  "شعار الرواية — يحرسها رمز الوعي، وينبض مع كل فصل تقرأه":
+    "The emblem of the novel — guarded by the symbol of awareness, beating with every chapter you read",
+
   // reading stats
   "تقدّم قراءتك": "Your reading progress",
   "دقيقة قراءة": "minutes read",
