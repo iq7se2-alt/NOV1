@@ -10,7 +10,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       defaultTheme="dark"
       enableSystem
       disableTransitionOnChange
-      themes={["light", "sepia", "dark", "cinematic", "book", "dark-void"]}
+      themes={["light", "sepia", "dark", "cinematic", "book", "dark-void", "water"]}
     >
       {children}
     </NextThemesProvider>
