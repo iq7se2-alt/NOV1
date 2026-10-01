@@ -28,10 +28,13 @@ export function mountTruthEye(el: HTMLElement): () => void {
   //       particles, no rapid eye movement. Some people enable reduced motion
   //       because of vestibular disorders (WCAG 2.3.3), so the full show is
   //       theirs to opt into, not something to impose on them.
-  const full = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const reduce = false; // never hard-freeze: the CSS draw-in still needs to run
-  // `gentle` = the reduced level
-  const gentle = !full;
+  // `gentle` is read live rather than snapshotted, so a visitor who flips the
+  // OS motion setting while the page is open sees the change straight away.
+  const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const gentle = () => motionQuery.matches;
+  // never hard-freeze: the CSS draw-in of the rings still needs to run, and a
+  // completely still emblem is not an emblem
+  const reduce = false;
   const R = Math.random;
   const P = Math.PI;
   const f = (n: number) => n.toFixed(2);
@@ -135,18 +138,18 @@ export function mountTruthEye(el: HTMLElement): () => void {
  <clipPath id="${id}c"><path class="eyeP"/></clipPath>
 </defs>
 <circle class="halo" cx="100" cy="100" r="99" fill="url(#${id}h)"/>
-<g class="rays" fill="url(#${id}r)" opacity="0">${gentle ? "" : rays}</g>
+<g class="rays" fill="url(#${id}r)" opacity="0">${gentle() ? "" : rays}</g>
 <g filter="url(#${id}g)">
  <circle class="l ${DR}" cx="100" cy="100" r="91" pathLength="100" stroke-width="1.3"/>
  <circle class="l ${FI}" cx="100" cy="100" r="88.5" stroke-width=".4" opacity=".6"/>
- <g class="rA ${FI}" style="animation-delay:.8s" ${gentle ? 'opacity=".25"' : ""}><circle class="l s" cx="100" cy="100" r="95" stroke-width=".6" stroke-dasharray=".5 3.2"/></g>
- <g class="rB ${FI}" style="animation-delay:1s">${gentle ? "" : ticks}</g>
- <g class="rC ${FI}" style="animation-delay:1.2s">${gentle ? "" : gems}</g>
+ <g class="rA ${FI}" style="animation-delay:.8s" ${gentle() ? 'opacity=".25"' : ""}><circle class="l s" cx="100" cy="100" r="95" stroke-width=".6" stroke-dasharray=".5 3.2"/></g>
+ <g class="rB ${FI}" style="animation-delay:1s">${gentle() ? "" : ticks}</g>
+ <g class="rC ${FI}" style="animation-delay:1.2s">${gentle() ? "" : gems}</g>
  <g class="rD"><path class="l ${DR}" style="animation-delay:.3s" pathLength="100" stroke-width=".9" opacity=".6" d="${sq(
    0,
  )}"/><path class="l ${DR}" style="animation-delay:.5s" pathLength="100" stroke-width=".9" opacity=".6" d="${sq(P / 4)}"/></g>
  <g class="rE ${FI}" style="animation-delay:1.4s"><path class="l s" stroke-width=".5" opacity=".4" d="${star}"/><circle class="l" cx="100" cy="100" r="58" stroke-width=".6" stroke-dasharray="1 2.5" opacity=".7"/></g>
- <g class="motes" ${gentle ? 'style="display:none"' : ""}><circle r="1.6" style="fill:var(--gold-soft)"/><circle r="1.2" style="fill:var(--gold-soft)"/><circle r="1.9" style="fill:var(--gold-soft)"/></g>
+ <g class="motes" ${gentle() ? 'style="display:none"' : ""}><circle r="1.6" style="fill:var(--gold-soft)"/><circle r="1.2" style="fill:var(--gold-soft)"/><circle r="1.9" style="fill:var(--gold-soft)"/></g>
  <path class="l ${DR}" style="animation-delay:2s" pathLength="100" stroke-width="1.1" d="M162 100Q175 99 186 88"/>
  <path class="l ${DR}" style="animation-delay:2s" pathLength="100" stroke-width="1.1" d="M38 100Q25 99 14 88"/>
 </g>
@@ -317,7 +320,7 @@ export function mountTruthEye(el: HTMLElement): () => void {
     if (now - lastMove > 2500) {
       hover = false;
       // gentle mode: the eye holds a calm gaze instead of darting around
-      if (!gentle && s > nextSacc) {
+      if (!gentle() && s > nextSacc) {
         const c = R() < 0.3;
         tx = c ? 0 : (R() * 2 - 1) * 11;
         ty = c ? 0 : (R() * 2 - 1) * 4;
@@ -331,12 +334,12 @@ export function mountTruthEye(el: HTMLElement): () => void {
       blinkT = s;
       // a double blink is fine for a normal preference, but under reduced
       // motion the two quick lid snaps are exactly what people find jarring
-      dbl = !gentle && R() < 0.25;
+      dbl = !gentle() && R() < 0.25;
       // and the blink comes around less often, so the eyelid is not in the
       // reader's face for a large share of the loop
-      nextBlink = s + (gentle ? 6 + R() * 6 : 2.5 + R() * 4);
+      nextBlink = s + (gentle() ? 6 + R() * 6 : 2.5 + R() * 4);
     }
-    if (!gentle && s > nextPulse) {
+    if (!gentle() && s > nextPulse) {
       pulse();
       nextPulse = s + 7 + R() * 5;
     }
@@ -381,25 +384,28 @@ export function mountTruthEye(el: HTMLElement): () => void {
       "transform",
       `translate(${f(100 + jx)} ${f(100 + jy)}) scale(${f(sx)} 1) translate(-100 -100)`,
     );
-    fibG.setAttribute("transform", `rotate(${f(s * 1.5)} 100 100)`);
+    if (!gentle()) fibG.setAttribute("transform", `rotate(${f(s * 1.5)} 100 100)`);
     const pT = (hover ? 9.8 : 8) + Math.sin(s * 0.7) * 0.35 - 3.6 * flare;
     pr += (pT - pr) * Math.min(1, dt * 5);
     pupil.setAttribute("r", f(pr));
     pring.setAttribute("r", f(pr + 0.8));
     glyphEl.setAttribute(
       "transform",
-      `translate(100 100) rotate(${f(-s * 20)}) scale(${f(pr / 8)}) translate(-100 -100)`,
+      // the glyph sits inside the pupil, so it still scales with it, but it
+      // stops spinning under reduced motion
+      `translate(100 100) ${gentle() ? "" : `rotate(${f(-s * 20)}) `}scale(${f(pr / 8)}) translate(-100 -100)`,
     );
     glyphEl.style.opacity = f(0.3 + 0.15 * Math.sin(s * 2) + 0.6 * flare);
     shine.setAttribute("transform", `translate(${f(gx * 0.3)} ${f(gy * 0.3)})`);
 
     // frame
-    raysEl.setAttribute("transform", `rotate(${f(s * 3)} 100 100)`);
-    if (!gentle)
+    if (!gentle()) raysEl.setAttribute("transform", `rotate(${f(s * 3)} 100 100)`);
+    if (!gentle())
       raysEl.style.opacity = f((0.3 + 0.15 * Math.sin(s * 1.3) + 0.6 * flare) * Math.min(1, s / 3));
     halo.style.opacity = f(Math.min(1, 0.7 + 0.2 * Math.sin(s * 0.9) + 0.3 * flare));
-    if (!gentle) for (const [n, v] of spin) n.setAttribute("transform", `rotate(${f(s * v)} 100 100)`);
-    motes.forEach((m, i) => {
+    if (!gentle()) for (const [n, v] of spin) n.setAttribute("transform", `rotate(${f(s * v)} 100 100)`);
+    if (!gentle())
+      motes.forEach((m, i) => {
       const a = s * (0.35 + i * 0.17) * (i % 2 ? -1 : 1) + i * 2.1;
       const r = 70 + 4 * Math.sin(s + i);
       m.setAttribute("cx", f(100 + Math.cos(a) * r));
@@ -412,7 +418,7 @@ export function mountTruthEye(el: HTMLElement): () => void {
     const ccx = W / 2;
     const ccy = H / 2;
     const RR = Math.min(W, H) / 2;
-    for (const p of gentle ? [] : ps) {
+    for (const p of gentle() ? [] : ps) {
       if (!reduce) {
         p.r -= p.v * dt * (1 + flare * 4);
         p.a += p.w * dt * (1.3 - p.r);
@@ -437,7 +443,10 @@ export function mountTruthEye(el: HTMLElement): () => void {
       ctx.fill();
     }
     ctx.strokeStyle = soft;
-    for (let i = gentle ? 0 : waves.length - 1; i >= 0; i--) {
+    // -1, not 0: starting at 0 would read waves[0] on an empty array and throw,
+    // which happens before the next requestAnimationFrame, so the emblem would
+    // freeze on the first frame instead of running in its gentle form.
+    for (let i = gentle() ? -1 : waves.length - 1; i >= 0; i--) {
       const w = waves[i];
       w.t += dt;
       const k = w.t / 1.6;
