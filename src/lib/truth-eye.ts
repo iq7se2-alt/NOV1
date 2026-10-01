@@ -11,17 +11,27 @@
  * re-themes itself with every one of the seven themes.
  *
  *
- * The emblem always animates, even when the OS asks for reduced motion — a still
- * eye defeats the point of it. `prefers-reduced-motion` is deliberately not consulted.
+ * The emblem animates in two levels. On a normal preference it runs the full
+ * show. When the visitor asks for reduced motion it drops to a gentle mode —
+ * blink and gaze only — instead of imposing the full animation on them, and it
+ * never freezes completely, since a still eye is not an emblem.
  *
  * Returns a cleanup function — call it on unmount.
  */
 export function mountTruthEye(el: HTMLElement): () => void {
   const id = "te" + Math.random().toString(36).slice(2, 8);
-  // The emblem is the page's signature animation, so it runs regardless of the OS
-  // motion preference — this machine has Windows animations switched off, which
-  // would otherwise freeze it on a single frame.
-  const reduce = false;
+  // Two motion levels.
+  //
+  // full: everything — rays pulse, motes spiral in, the eye saccades on its own.
+  // soft: only what a reader needs to see it as alive — a slow blink and a
+  //       gentle gaze toward the pointer. No spinning rings, no radiating
+  //       particles, no rapid eye movement. Some people enable reduced motion
+  //       because of vestibular disorders (WCAG 2.3.3), so the full show is
+  //       theirs to opt into, not something to impose on them.
+  const full = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduce = false; // never hard-freeze: the CSS draw-in still needs to run
+  // `gentle` = the reduced level
+  const gentle = !full;
   const R = Math.random;
   const P = Math.PI;
   const f = (n: number) => n.toFixed(2);
@@ -125,18 +135,18 @@ export function mountTruthEye(el: HTMLElement): () => void {
  <clipPath id="${id}c"><path class="eyeP"/></clipPath>
 </defs>
 <circle class="halo" cx="100" cy="100" r="99" fill="url(#${id}h)"/>
-<g class="rays" fill="url(#${id}r)" opacity="0">${rays}</g>
+<g class="rays" fill="url(#${id}r)" opacity="0">${gentle ? "" : rays}</g>
 <g filter="url(#${id}g)">
  <circle class="l ${DR}" cx="100" cy="100" r="91" pathLength="100" stroke-width="1.3"/>
  <circle class="l ${FI}" cx="100" cy="100" r="88.5" stroke-width=".4" opacity=".6"/>
- <g class="rA ${FI}" style="animation-delay:.8s"><circle class="l s" cx="100" cy="100" r="95" stroke-width=".6" stroke-dasharray=".5 3.2"/></g>
- <g class="rB ${FI}" style="animation-delay:1s">${ticks}</g>
- <g class="rC ${FI}" style="animation-delay:1.2s">${gems}</g>
+ <g class="rA ${FI}" style="animation-delay:.8s" ${gentle ? 'opacity=".25"' : ""}><circle class="l s" cx="100" cy="100" r="95" stroke-width=".6" stroke-dasharray=".5 3.2"/></g>
+ <g class="rB ${FI}" style="animation-delay:1s">${gentle ? "" : ticks}</g>
+ <g class="rC ${FI}" style="animation-delay:1.2s">${gentle ? "" : gems}</g>
  <g class="rD"><path class="l ${DR}" style="animation-delay:.3s" pathLength="100" stroke-width=".9" opacity=".6" d="${sq(
    0,
  )}"/><path class="l ${DR}" style="animation-delay:.5s" pathLength="100" stroke-width=".9" opacity=".6" d="${sq(P / 4)}"/></g>
  <g class="rE ${FI}" style="animation-delay:1.4s"><path class="l s" stroke-width=".5" opacity=".4" d="${star}"/><circle class="l" cx="100" cy="100" r="58" stroke-width=".6" stroke-dasharray="1 2.5" opacity=".7"/></g>
- <g class="motes"><circle r="1.6" style="fill:var(--gold-soft)"/><circle r="1.2" style="fill:var(--gold-soft)"/><circle r="1.9" style="fill:var(--gold-soft)"/></g>
+ <g class="motes" ${gentle ? 'style="display:none"' : ""}><circle r="1.6" style="fill:var(--gold-soft)"/><circle r="1.2" style="fill:var(--gold-soft)"/><circle r="1.9" style="fill:var(--gold-soft)"/></g>
  <path class="l ${DR}" style="animation-delay:2s" pathLength="100" stroke-width="1.1" d="M162 100Q175 99 186 88"/>
  <path class="l ${DR}" style="animation-delay:2s" pathLength="100" stroke-width="1.1" d="M38 100Q25 99 14 88"/>
 </g>
@@ -306,7 +316,8 @@ export function mountTruthEye(el: HTMLElement): () => void {
     // gaze — follow the pointer, otherwise saccade on your own
     if (now - lastMove > 2500) {
       hover = false;
-      if (s > nextSacc) {
+      // gentle mode: the eye holds a calm gaze instead of darting around
+      if (!gentle && s > nextSacc) {
         const c = R() < 0.3;
         tx = c ? 0 : (R() * 2 - 1) * 11;
         ty = c ? 0 : (R() * 2 - 1) * 4;
@@ -318,10 +329,14 @@ export function mountTruthEye(el: HTMLElement): () => void {
     gy += (ty - gy) * kk;
     if (!reduce && s > nextBlink && blinkT < 0) {
       blinkT = s;
-      dbl = R() < 0.25;
-      nextBlink = s + 2.5 + R() * 4;
+      // a double blink is fine for a normal preference, but under reduced
+      // motion the two quick lid snaps are exactly what people find jarring
+      dbl = !gentle && R() < 0.25;
+      // and the blink comes around less often, so the eyelid is not in the
+      // reader's face for a large share of the loop
+      nextBlink = s + (gentle ? 6 + R() * 6 : 2.5 + R() * 4);
     }
-    if (!reduce && s > nextPulse) {
+    if (!gentle && s > nextPulse) {
       pulse();
       nextPulse = s + 7 + R() * 5;
     }
@@ -380,9 +395,10 @@ export function mountTruthEye(el: HTMLElement): () => void {
 
     // frame
     raysEl.setAttribute("transform", `rotate(${f(s * 3)} 100 100)`);
-    raysEl.style.opacity = f((0.3 + 0.15 * Math.sin(s * 1.3) + 0.6 * flare) * Math.min(1, s / 3));
+    if (!gentle)
+      raysEl.style.opacity = f((0.3 + 0.15 * Math.sin(s * 1.3) + 0.6 * flare) * Math.min(1, s / 3));
     halo.style.opacity = f(Math.min(1, 0.7 + 0.2 * Math.sin(s * 0.9) + 0.3 * flare));
-    for (const [n, v] of spin) n.setAttribute("transform", `rotate(${f(s * v)} 100 100)`);
+    if (!gentle) for (const [n, v] of spin) n.setAttribute("transform", `rotate(${f(s * v)} 100 100)`);
     motes.forEach((m, i) => {
       const a = s * (0.35 + i * 0.17) * (i % 2 ? -1 : 1) + i * 2.1;
       const r = 70 + 4 * Math.sin(s + i);
@@ -396,7 +412,7 @@ export function mountTruthEye(el: HTMLElement): () => void {
     const ccx = W / 2;
     const ccy = H / 2;
     const RR = Math.min(W, H) / 2;
-    for (const p of ps) {
+    for (const p of gentle ? [] : ps) {
       if (!reduce) {
         p.r -= p.v * dt * (1 + flare * 4);
         p.a += p.w * dt * (1.3 - p.r);
@@ -421,7 +437,7 @@ export function mountTruthEye(el: HTMLElement): () => void {
       ctx.fill();
     }
     ctx.strokeStyle = soft;
-    for (let i = waves.length - 1; i >= 0; i--) {
+    for (let i = gentle ? 0 : waves.length - 1; i >= 0; i--) {
       const w = waves[i];
       w.t += dt;
       const k = w.t / 1.6;

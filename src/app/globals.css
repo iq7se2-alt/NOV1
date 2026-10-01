@@ -731,18 +731,21 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* The eye emblem opts out: it is the site's signature animation, and a still
-     eye defeats the point of it (this machine has Windows animations off).
-     Written as :not() rather than as a second rule with `revert` — `revert`
-     discards our own declarations for the property and falls back to the
-     browser default, which for animation-duration is 0s, i.e. it would switch
-     the emblem off instead of exempting it. See src/lib/truth-eye.ts. */
+  /* The eye emblem opts out: it is the site's signature animation. Written as
+     :not() rather than as a second rule with `revert` — `revert` discards our
+     own declarations for the property and falls back to the browser default,
+     which for animation-duration is 0s, so it would switch the emblem off
+     instead of exempting it. See src/lib/truth-eye.ts.
+     The delay resets matter: shortening a duration while leaving a delay in
+     place still makes the visitor wait, which is the part users actually feel. */
   *:not(.te-draw-exempt, .te-draw-exempt *),
   *:not(.te-draw-exempt, .te-draw-exempt *)::before,
   *:not(.te-draw-exempt, .te-draw-exempt *)::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
   }
 }
 
